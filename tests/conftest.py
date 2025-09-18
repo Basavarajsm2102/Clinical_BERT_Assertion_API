@@ -1,8 +1,11 @@
-import pytest
 import asyncio
+from unittest.mock import AsyncMock, Mock
+
+import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, AsyncMock
+
 from app.main import app
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -10,11 +13,13 @@ def event_loop():
     yield loop
     loop.close()
 
+
 @pytest.fixture
 def client():
     return TestClient(app)
 
-@pytest.fixture  
+
+@pytest.fixture
 def mock_model():
     mock = Mock()
     mock.is_loaded.return_value = True

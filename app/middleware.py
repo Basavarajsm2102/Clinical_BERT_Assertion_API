@@ -1,16 +1,18 @@
+import json
+import logging
+import os
+import time
+from collections import defaultdict
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-import time
-import logging
-import json
-from collections import defaultdict
-import os
 
 logger = logging.getLogger(__name__)
 
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    '''Add security headers'''
+    """Add security headers"""
 
     def __init__(self, app, csp_policy: str = None, hsts_max_age: int = 31536000):
         super().__init__(app)
@@ -29,12 +31,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Content-Security-Policy"] = self.csp_policy
 
         if request.url.scheme == "https":
-            response.headers["Strict-Transport-Security"] = f"max-age={self.hsts_max_age}"
+            response.headers[
+                "Strict-Transport-Security"
+            ] = f"max-age={self.hsts_max_age}"
 
         return response
 
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    '''Rate limiting middleware'''
+    """Rate limiting middleware"""
 
     def __init__(self, app, requests_per_minute: int = 100):
         super().__init__(app)
@@ -55,62 +60,81 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client_id = self.get_client_id(request)
 
         client_requests = self.requests[client_id]
-        recent_requests = [req_time for req_time in client_requests if req_time > current_time - 60]
+        recent_requests = [
+            req_time for req_time in client_requests if req_time > current_time - 60
+        ]
 
         if len(recent_requests) >= self.requests_per_minute:
             return JSONResponse(
                 status_code=429,
-                content={"error": "Rate limit exceeded", "retry_after": 60}
+                content={"error": "Rate limit exceeded", "retry_after": 60},
             )
 
         self.requests[client_id].append(current_time)
         response = await call_next(request)
 
         response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
-        response.headers["X-RateLimit-Remaining"] = str(self.requests_per_minute - len(recent_requests) - 1)
+        response.headers["X-RateLimit-Remaining"] = str(
+            self.requests_per_minute - len(recent_requests) - 1
+        )
 
         return response
 
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    '''Request logging middleware'''
+    """Request logging middleware"""
 
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
-        request_id = request.headers.get("X-Request-ID", f"req-{int(start_time * 1000)}")
+        request_id = request.headers.get(
+            "X-Request-ID", f"req-{int(start_time * 1000)}"
+        )
 
-        logger.info(json.dumps({
-            "event": "request_started",
-            "request_id": request_id,
-            "method": request.method,
-            "path": request.url.path,
-            "client_ip": self.get_client_ip(request),
-            "timestamp": start_time
-        }))
+        logger.info(
+            json.dumps(
+                {
+                    "event": "request_started",
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "client_ip": self.get_client_ip(request),
+                    "timestamp": start_time,
+                }
+            )
+        )
 
         try:
             response = await call_next(request)
 
             duration = time.time() - start_time
-            logger.info(json.dumps({
-                "event": "request_completed",
-                "request_id": request_id,
-                "status_code": response.status_code,
-                "duration_ms": duration * 1000,
-                "timestamp": time.time()
-            }))
+            logger.info(
+                json.dumps(
+                    {
+                        "event": "request_completed",
+                        "request_id": request_id,
+                        "status_code": response.status_code,
+                        "duration_ms": duration * 1000,
+                        "timestamp": time.time(),
+                    }
+                )
+            )
 
             response.headers["X-Request-ID"] = request_id
             return response
 
         except Exception as e:
             duration = time.time() - start_time
-            logger.error(json.dumps({
-                "event": "request_failed",
-                "request_id": request_id,
-                "error": str(e),
-                "duration_ms": duration * 1000,
-                "timestamp": time.time()
-            }))
+            logger.error(
+                json.dumps(
+                    {
+                        "event": "request_failed",
+                        "request_id": request_id,
+                        "error": str(e),
+                        "duration_ms": duration * 1000,
+                        "timestamp": time.time(),
+                    }
+                )
+            )
             raise
 
     def get_client_ip(self, request: Request) -> str:
@@ -119,8 +143,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 return request.headers[header].split(",")[0].strip()
         return request.client.host if request.client else "unknown"
 
+
 class MetricsMiddleware(BaseHTTPMiddleware):
-    '''Request metrics middleware'''
+    """Request metrics middleware"""
 
     def __init__(self, app):
         super().__init__(app)

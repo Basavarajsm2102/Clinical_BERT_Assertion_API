@@ -1,15 +1,17 @@
-from fastapi import HTTPException, status, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import os
 import hashlib
-from typing import Optional
 import logging
+import os
+from typing import Optional
+
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
+
 class APIKeyAuth:
-    '''API Key authentication handler'''
+    """API Key authentication handler"""
 
     def __init__(self):
         self.api_keys = self._load_api_keys()
@@ -25,13 +27,15 @@ class APIKeyAuth:
             return True
         return api_key in self.api_keys
 
+
 auth_handler = APIKeyAuth()
+
 
 async def verify_api_key(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> bool:
-    '''Verify API key from header or query parameter'''
+    """Verify API key from header or query parameter"""
 
     if request.url.path in ["/health", "/metrics", "/"]:
         return True
@@ -52,15 +56,13 @@ async def verify_api_key(
 
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key required"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="API key required"
         )
 
     if not auth_handler.verify_key(api_key):
         logger.warning(f"Invalid API key from {request.client.host}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
         )
 
     return True
