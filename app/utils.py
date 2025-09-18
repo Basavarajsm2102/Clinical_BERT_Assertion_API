@@ -68,7 +68,7 @@ def apply_hybrid_pipeline(predictions: list, sentences: list) -> list:
             rule_applied = "conditional_trigger"
 
         # Rule 2: Strengthen POSSIBLE detection for uncertainty words
-        elif any(word in sentence.lower() for word in ["may", "might", "could", "possibly", "likely", "probable", "probably", "appears to", "suggests", "suspect", "potential"]):
+        elif any(word in sentence.lower() for word in ["may", "might", "could", "possibly", "likely", "probable", "probably", "appears to", "suggests", "suspect", "potential", "possible"]):
             if model_label == "PRESENT":
                 final_label = "POSSIBLE"
                 rule_applied = "uncertainty_strengthening"
@@ -89,5 +89,5 @@ def detect_conditional_phrases(sentence: str) -> bool:
 
 def detect_uncertainty_phrases(sentence: str) -> bool:
     """Check if sentence contains uncertainty words that might indicate possibility."""
-    uncertainty_words = ["may", "might", "could", "possibly"]
+    uncertainty_words = ["may", "might", "could", "possibly", "likely", "probable", "probably", "appears to", "suggests", "suspect", "potential", "possible"]
     return any(word in sentence.lower() for word in uncertainty_words)
