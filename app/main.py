@@ -1,11 +1,9 @@
 # Standard library imports
-import asyncio
 import logging
 import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Optional
 
 # Third party imports
 import uvicorn
@@ -106,20 +104,20 @@ app = FastAPI(
     title="Clinical BERT Assertion API",
     description="""
     🏥 **Production-Grade Clinical Text Classification API**
-    
-    Real-time inference API for clinical assertion detection using 
+
+    Real-time inference API for clinical assertion detection using
     `bvanaken/clinical-assertion-negation-bert` from Hugging Face.
-    
+
     ## Features
     - ⚡ Sub-500ms response time
     - 🔒 Enterprise security
     - 📊 Comprehensive monitoring
     - 🚀 Auto-scaling deployment
     - 🧪 Extensive testing coverage
-    
+
     ## Assertion Categories
     - **PRESENT**: Medical condition is explicitly present
-    - **ABSENT**: Medical condition is explicitly absent/negated  
+    - **ABSENT**: Medical condition is explicitly absent/negated
     - **POSSIBLE**: Medical condition is possible/uncertain
     """,
     version="1.0.0",
