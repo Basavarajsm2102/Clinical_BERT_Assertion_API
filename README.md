@@ -998,42 +998,7 @@ graph TB
     class HUGGINGFACE,PYPI,DOCKER_HUB externalClass
 ```
 
-### Deployment Architecture
 
-```mermaid
-graph LR
-    subgraph "Production Environment"
-        LB[Load Balancer<br/>Global Anycast]
-        CDN[CDN<br/>Edge Caching]
-        WAF[WAF<br/>Security Layer]
-    end
-
-    subgraph "Application Layer"
-        API_GATEWAY[API Gateway<br/>Rate Limiting]
-        APP_INSTANCES[App Instances<br/>Auto-scaling<br/>2-10 instances]
-    end
-
-    subgraph "Data Layer"
-        CACHE[Redis Cache<br/>Optional<br/>Session Store]
-        METRICS_DB[Metrics DB<br/>Prometheus TSDB]
-    end
-
-    subgraph "Infrastructure"
-        MONITORING[Monitoring Stack<br/>Grafana + Prometheus]
-        LOGGING[Centralized Logging<br/>Cloud Logging]
-        ALERTS[Alert Manager<br/>PagerDuty Integration]
-    end
-
-    CDN --> LB
-    LB --> WAF
-    WAF --> API_GATEWAY
-    API_GATEWAY --> APP_INSTANCES
-    APP_INSTANCES --> CACHE
-    APP_INSTANCES --> METRICS_DB
-    APP_INSTANCES --> MONITORING
-    APP_INSTANCES --> LOGGING
-    MONITORING --> ALERTS
-```
 
 ---
 
