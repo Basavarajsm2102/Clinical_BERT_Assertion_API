@@ -2,7 +2,7 @@
 import asyncio
 import logging
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Third party imports
 import torch
@@ -19,9 +19,9 @@ class ClinicalAssertionModel:
     """Clinical Assertion Model for real-time inference"""
 
     def __init__(self) -> None:
-        self.model = None
-        self.tokenizer = None
-        self.pipeline = None
+        self.model: Optional[AutoModelForSequenceClassification] = None
+        self.tokenizer: Optional[AutoTokenizer] = None
+        self.pipeline: Optional[TextClassificationPipeline] = None
         self.model_name = "bvanaken/clinical-assertion-negation-bert"
         self.label_mapping = {
             "LABEL_0": "PRESENT",
@@ -82,6 +82,7 @@ class ClinicalAssertionModel:
 
     def _predict_sync(self, sentence: str) -> Dict[str, Any]:
         """Synchronous prediction method"""
+        assert self.pipeline is not None, "Pipeline not initialized"
         with torch.no_grad():
             result = self.pipeline(sentence, truncation=True, max_length=512)
 
@@ -119,6 +120,7 @@ class ClinicalAssertionModel:
 
     def _predict_batch_sync(self, sentences: List[str]) -> List[Dict[str, Any]]:
         """Synchronous batch prediction"""
+        assert self.pipeline is not None, "Pipeline not initialized"
         with torch.no_grad():
             results = self.pipeline(
                 sentences, batch_size=8, truncation=True, max_length=512

@@ -3,12 +3,12 @@ import json
 import logging
 import time
 from collections import defaultdict
-from typing import Dict, List
+from typing import Any, Dict, List
 
 # Third party imports
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         self.csp_policy = csp_policy
         self.hsts_max_age = hsts_max_age
 
-    async def dispatch(self, request: Request, call_next) -> JSONResponse:
+    async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
 
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -56,9 +56,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return forwarded_for.split(",")[0].strip()
         return request.client.host if request.client else "unknown"
 
-    async def dispatch(self, request: Request, call_next) -> JSONResponse:
+    async def dispatch(self, request: Request, call_next) -> Response:
         if request.url.path == "/health":
-            return await call_next(request)
+            response = await call_next(request)
+            return response
 
         current_time = time.time()
         client_id = self.get_client_id(request)
@@ -88,7 +89,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Request logging middleware"""
 
-    async def dispatch(self, request: Request, call_next) -> JSONResponse:
+    async def dispatch(self, request: Request, call_next) -> Response:
         start_time = time.time()
         request_id = request.headers.get(
             "X-Request-ID", f"req-{int(start_time * 1000)}"
@@ -156,7 +157,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         self.request_count = 0
         self.error_count = 0
 
-    async def dispatch(self, request: Request, call_next) -> JSONResponse:
+    async def dispatch(self, request: Request, call_next) -> Response:
         start_time = time.time()
 
         try:
