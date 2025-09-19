@@ -187,17 +187,6 @@ async def health_check() -> HealthResponse:
         uptime_seconds = time.time() - app_start_time
         system_metrics = get_system_metrics()
 
-        health_data = {
-            "status": "healthy" if model_loaded else "unhealthy",
-            "model_loaded": model_loaded,
-            "timestamp": time.time(),
-            "version": "1.0.0",
-            "environment": os.getenv("ENVIRONMENT", "development"),
-            "uptime_seconds": uptime_seconds,
-            "total_predictions": prediction_count,
-            "system_metrics": system_metrics,
-        }
-
         # Create response with proper typing
         return HealthResponse(
             status="healthy" if model_loaded else "unhealthy",
