@@ -4,7 +4,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import Optional
 
 # Third party imports
 import uvicorn

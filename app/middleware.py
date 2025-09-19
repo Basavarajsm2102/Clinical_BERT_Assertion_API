@@ -3,7 +3,7 @@ import json
 import logging
 import time
 from collections import defaultdict
-from typing import Any, Awaitable, Callable, Dict, List
+from typing import Awaitable, Callable, Dict, List
 
 # Third party imports
 from fastapi import Request
