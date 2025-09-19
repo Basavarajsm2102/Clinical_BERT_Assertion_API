@@ -54,8 +54,12 @@ class PredictionResponse(BaseModel):
     )
 
     label: str = Field(..., description="Predicted assertion label")
+    model_label: str = Field(..., description="Raw model prediction label")
     score: float = Field(
         ..., ge=0.0, le=1.0, description="Confidence score between 0 and 1"
+    )
+    rule_applied: Optional[str] = Field(
+        None, description="Rule applied for label enhancement"
     )
     prediction_time_ms: Optional[float] = Field(
         None, description="Prediction time in milliseconds"
