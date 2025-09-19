@@ -1,6 +1,8 @@
+# Standard library imports
 import asyncio
 from unittest.mock import AsyncMock, Mock
 
+# Third party imports
 import pytest
 from fastapi.testclient import TestClient
 
@@ -24,7 +26,5 @@ def mock_model():
     mock = Mock()
     mock.is_loaded.return_value = True
     mock.predict = AsyncMock(return_value={"label": "ABSENT", "score": 0.9842})
-    mock.predict_batch = AsyncMock(
-        return_value=[{"label": "ABSENT", "score": 0.9842}]
-    )
+    mock.predict_batch = AsyncMock(return_value=[{"label": "ABSENT", "score": 0.9842}])
     return mock

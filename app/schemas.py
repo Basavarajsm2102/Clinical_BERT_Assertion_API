@@ -1,6 +1,8 @@
+# Standard library imports
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+# Third party imports
 from pydantic import BaseModel, Field, validator
 
 
@@ -30,9 +32,7 @@ class PredictionRequest(BaseModel):
         return v.strip()
 
     class Config:
-        json_schema_extra = {
-            "example": {"sentence": "The patient denies chest pain."}
-        }
+        json_schema_extra = {"example": {"sentence": "The patient denies chest pain."}}
         protected_namespaces = ()
 
 
@@ -43,9 +43,7 @@ class PredictionResponse(BaseModel):
         ..., description="Final assertion label (may be enhanced by rules)"
     )
     model_label: str = Field(..., description="Raw model prediction label")
-    score: float = Field(
-        ..., ge=0.0, le=1.0, description="Model confidence score"
-    )
+    score: float = Field(..., ge=0.0, le=1.0, description="Model confidence score")
     rule_applied: Optional[str] = Field(
         None, description="Rule applied for label enhancement"
     )
@@ -109,15 +107,9 @@ class HealthResponse(BaseModel):
     model_loaded: bool = Field(..., description="Model loaded status")
     timestamp: float = Field(..., description="Check timestamp")
     version: Optional[str] = Field("1.0.0", description="API version")
-    uptime_seconds: Optional[float] = Field(
-        None, description="Uptime in seconds"
-    )
-    total_predictions: Optional[int] = Field(
-        None, description="Total predictions made"
-    )
-    system_metrics: Optional[Dict[str, Any]] = Field(
-        None, description="System metrics"
-    )
+    uptime_seconds: Optional[float] = Field(None, description="Uptime in seconds")
+    total_predictions: Optional[int] = Field(None, description="Total predictions made")
+    system_metrics: Optional[Dict[str, Any]] = Field(None, description="System metrics")
 
 
 class MetricsResponse(BaseModel):
@@ -125,12 +117,8 @@ class MetricsResponse(BaseModel):
 
     total_predictions: int = Field(..., description="Total predictions")
     uptime_seconds: float = Field(..., description="Uptime in seconds")
-    memory_usage_mb: Optional[float] = Field(
-        None, description="Memory usage in MB"
-    )
-    cpu_usage_percent: Optional[float] = Field(
-        None, description="CPU usage percentage"
-    )
+    memory_usage_mb: Optional[float] = Field(None, description="Memory usage in MB")
+    cpu_usage_percent: Optional[float] = Field(None, description="CPU usage percentage")
     model_loaded: bool = Field(..., description="Model loaded status")
 
 

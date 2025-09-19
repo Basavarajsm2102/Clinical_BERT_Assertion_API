@@ -1,8 +1,10 @@
+# Standard library imports
 import logging
 import os
 import re
 from typing import Any, Dict
 
+# Third party imports
 import psutil
 
 logger = logging.getLogger(__name__)

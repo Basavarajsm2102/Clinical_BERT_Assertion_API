@@ -1,7 +1,9 @@
+# Standard library imports
 import logging
 import os
 from typing import Optional
 
+# Third party imports
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
