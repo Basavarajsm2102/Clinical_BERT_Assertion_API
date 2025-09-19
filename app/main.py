@@ -246,7 +246,9 @@ async def model_info() -> ModelInfoResponse:
     description="Classify a single clinical sentence for assertion status",
 )
 async def predict_assertion(
-    request: PredictionRequest, background_tasks: BackgroundTasks, req: Optional[Request] = None
+    request: PredictionRequest,
+    background_tasks: BackgroundTasks,
+    req: Optional[Request] = None,
 ):
     """Enhanced prediction endpoint with monitoring and security"""
     global model, prediction_count
@@ -463,12 +465,16 @@ async def root() -> dict:
 
 
 # Background tasks
-async def log_prediction_analytics(request_id: str, label: str, prediction_time: float) -> None:
+async def log_prediction_analytics(
+    request_id: str, label: str, prediction_time: float
+) -> None:
     """Log prediction analytics for monitoring"""
     logger.info(f"Analytics {request_id}: label={label}, time={prediction_time:.3f}s")
 
 
-async def log_batch_analytics(request_id: str, batch_size: int, prediction_time: float) -> None:
+async def log_batch_analytics(
+    request_id: str, batch_size: int, prediction_time: float
+) -> None:
     """Log batch prediction analytics"""
     logger.info(
         f"Batch analytics {request_id}: size={batch_size}, time={prediction_time:.3f}s"
