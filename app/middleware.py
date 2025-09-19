@@ -152,10 +152,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             )
             raise
 
-    def get_client_ip(self, request: Request) -> str:
-        for header in ["X-Forwarded-For", "X-Real-IP"]:
-            if header in request.headers:
-                return request.headers[header].split(",")[0].strip()
+    def get_client_id(self, request: Request) -> str:
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
         return request.client.host if request.client else "unknown"
 
 
