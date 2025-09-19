@@ -112,7 +112,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
-                    "client_ip": self.get_client_ip(request),
+                    "client_ip": self.get_client_id(request),
                     "timestamp": start_time,
                 }
             )
