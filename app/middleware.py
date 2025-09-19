@@ -3,12 +3,13 @@ import json
 import logging
 import time
 from collections import defaultdict
-from typing import Dict, List
+from typing import Any, Awaitable, Callable, Dict, List
 
 # Third party imports
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +18,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers"""
 
     def __init__(
-        self, app: BaseHTTPMiddleware, csp_policy: str | None = None, hsts_max_age: int = 31536000
+        self, app: ASGIApp, csp_policy: str | None = None, hsts_max_age: int = 31536000
     ) -> None:
         super().__init__(app)
         self.csp_policy = csp_policy
         self.hsts_max_age = hsts_max_age
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         response = await call_next(request)
 
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -45,7 +48,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware"""
 
-    def __init__(self, app: BaseHTTPMiddleware, requests_per_minute: int = 100) -> None:
+    def __init__(self, app: ASGIApp, requests_per_minute: int = 100) -> None:
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.requests: Dict[str, List[float]] = defaultdict(list)
@@ -56,7 +59,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return forwarded_for.split(",")[0].strip()
         return request.client.host if request.client else "unknown"
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         if request.url.path == "/health":
             response = await call_next(request)
             return response
@@ -89,7 +94,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Request logging middleware"""
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         start_time = time.time()
         request_id = request.headers.get(
             "X-Request-ID", f"req-{int(start_time * 1000)}"
@@ -152,12 +159,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 class MetricsMiddleware(BaseHTTPMiddleware):
     """Request metrics middleware"""
 
-    def __init__(self, app: BaseHTTPMiddleware) -> None:
+    def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)
         self.request_count = 0
         self.error_count = 0
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         start_time = time.time()
 
         try:
