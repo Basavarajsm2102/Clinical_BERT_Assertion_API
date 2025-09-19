@@ -130,7 +130,8 @@ jobs:
     needs: [test, security]
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -147,20 +148,28 @@ jobs:
 
     - name: Test Docker image
       run: |
-        # Start container in background
-        docker run -d --name test-api -p 8000:8000 clinical-bert-api:test
+        # Check if image was built successfully
+        if docker images | grep -q "clinical-bert-api.*test"; then
+          echo "✅ Docker image built successfully"
 
-        # Wait for container to start
-        sleep 45
+          # Start container in background
+          docker run -d --name test-api -p 8000:8000 clinical-bert-api:test
 
-        # Test health endpoint
-        curl -f http://localhost:8000/health || exit 1
+          # Wait for container to start
+          sleep 45
 
-        # Test root endpoint
-        curl -f http://localhost:8000/ || exit 1
+          # Test health endpoint
+          curl -f http://localhost:8000/health || exit 1
 
-        # Stop container
-        docker stop test-api
+          # Test root endpoint
+          curl -f http://localhost:8000/ || exit 1
+
+          # Stop container
+          docker stop test-api
+        else
+          echo "❌ Docker image not found - build may have failed"
+          exit 1
+        fi
 
   format-check:
     name: Format Consistency Check
