@@ -244,7 +244,6 @@ async def model_info() -> ModelInfoResponse:
 async def predict_assertion(
     request: PredictionRequest,
     background_tasks: BackgroundTasks,
-    req: Optional[Request] = None,
 ) -> PredictionResponse:
     """Enhanced prediction endpoint with monitoring and security"""
     global model, prediction_count
