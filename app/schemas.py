@@ -17,7 +17,10 @@ class PredictionRequest(BaseModel):
     """Request model for single prediction"""
 
     sentence: str = Field(
-        ..., min_length=1, max_length=1000, description="Clinical sentence to classify"
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="Clinical sentence to classify"
     )
 
     @validator("sentence")
@@ -35,7 +38,8 @@ class PredictionResponse(BaseModel):
     """Response model for single prediction"""
 
     label: str = Field(
-        ..., description="Final assertion label (may be enhanced by rules)"
+        ...,
+        description="Final assertion label (may be enhanced by rules)"
     )
     model_label: str = Field(..., description="Raw model prediction label")
     score: float = Field(..., ge=0.0, le=1.0, description="Model confidence score")
@@ -65,7 +69,10 @@ class BatchPredictionRequest(BaseModel):
     """Request model for batch prediction"""
 
     sentences: List[str] = Field(
-        ..., min_items=1, max_items=100, description="List of sentences"
+        ...,
+        min_items=1,
+        max_items=100,
+        description="List of sentences"
     )
 
     @validator("sentences")
@@ -103,8 +110,12 @@ class HealthResponse(BaseModel):
     timestamp: float = Field(..., description="Check timestamp")
     version: Optional[str] = Field("1.0.0", description="API version")
     uptime_seconds: Optional[float] = Field(None, description="Uptime in seconds")
-    total_predictions: Optional[int] = Field(None, description="Total predictions made")
-    system_metrics: Optional[Dict[str, Any]] = Field(None, description="System metrics")
+    total_predictions: Optional[int] = Field(
+        None, description="Total predictions made"
+    )
+    system_metrics: Optional[Dict[str, Any]] = Field(
+        None, description="System metrics"
+    )
 
 
 class MetricsResponse(BaseModel):
@@ -112,8 +123,12 @@ class MetricsResponse(BaseModel):
 
     total_predictions: int = Field(..., description="Total predictions")
     uptime_seconds: float = Field(..., description="Uptime in seconds")
-    memory_usage_mb: Optional[float] = Field(None, description="Memory usage in MB")
-    cpu_usage_percent: Optional[float] = Field(None, description="CPU usage percentage")
+    memory_usage_mb: Optional[float] = Field(
+        None, description="Memory usage in MB"
+    )
+    cpu_usage_percent: Optional[float] = Field(
+        None, description="CPU usage percentage"
+    )
     model_loaded: bool = Field(..., description="Model loaded status")
 
 

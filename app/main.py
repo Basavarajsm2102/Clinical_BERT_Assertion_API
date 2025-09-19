@@ -1,23 +1,19 @@
-import asyncio
 import logging
 import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Optional
 
 import uvicorn
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
-from .auth import verify_api_key
 from .middleware import (
     MetricsMiddleware,
-    RateLimitMiddleware,
     RequestLoggingMiddleware,
     SecurityHeadersMiddleware,
 )
@@ -28,8 +24,6 @@ from .schemas import (
     BatchPredictionRequest,
     BatchPredictionResponse,
     HealthResponse,
-    MetricsResponse,
-    ModelInfoResponse,
     PredictionRequest,
     PredictionResponse,
 )
@@ -96,7 +90,7 @@ app = FastAPI(
     description="""
     🏥 **Production-Grade Clinical Text Classification API**
 
-    Real-time inference API for clinical assertion detection using 
+    Real-time inference API for clinical assertion detection using
     `bvanaken/clinical-assertion-negation-bert` from Hugging Face.
 
     ## Features
@@ -186,7 +180,11 @@ async def predict_assertion(
         MODEL_PREDICTIONS_TOTAL.labels(label=result["label"]).inc()
 
         logger.info(
-            f"Prediction completed {request_id}: final_label={result['label']}, model_label={result['model_label']}, rule={result.get('rule_applied')}, time={prediction_time:.3f}s"
+            f"Prediction completed {request_id}: "
+            f"final_label={result['label']}, "
+            f"model_label={result['model_label']}, "
+            f"rule={result.get('rule_applied')}, "
+            f"time={prediction_time:.3f}s"
         )
 
         return PredictionResponse(
@@ -241,7 +239,9 @@ async def predict_batch(
         prediction_count += len(request.sentences)
 
         REQUEST_COUNT.labels(
-            method="POST", endpoint="/predict/batch", status="200"
+            method="POST",
+            endpoint="/predict/batch",
+            status="200"
         ).inc()
         for result in enhanced_results:
             MODEL_PREDICTIONS_TOTAL.labels(label=result["label"]).inc()
@@ -270,7 +270,9 @@ async def predict_batch(
 
     except Exception as e:
         REQUEST_COUNT.labels(
-            method="POST", endpoint="/predict/batch", status="500"
+            method="POST",
+            endpoint="/predict/batch",
+            status="500"
         ).inc()
         logger.error(f"Batch prediction failed {request_id}: {str(e)}")
         raise HTTPException(

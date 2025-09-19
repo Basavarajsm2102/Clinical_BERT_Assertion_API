@@ -38,7 +38,7 @@ class ClinicalAssertionModel:
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 self.model_name
-            )
+            ).to(self.device)
 
             if not torch.cuda.is_available():
                 self.model = self.model.to(self.device)
@@ -72,7 +72,9 @@ class ClinicalAssertionModel:
 
         try:
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, self._predict_sync, sentence)
+            result = await loop.run_in_executor(
+                None, self._predict_sync, sentence
+            )
             return result
         except Exception as e:
             logger.error(f"Prediction error: {str(e)}")
@@ -119,7 +121,10 @@ class ClinicalAssertionModel:
         """Synchronous batch prediction"""
         with torch.no_grad():
             results = self.pipeline(
-                sentences, batch_size=8, truncation=True, max_length=512
+                sentences,
+                batch_size=8,
+                truncation=True,
+                max_length=512
             )
 
         processed_results = []
@@ -129,7 +134,9 @@ class ClinicalAssertionModel:
             label = result["label"]
             score = result["score"]
             readable_label = self.label_mapping.get(label, label)
-            processed_results.append({"label": readable_label, "score": float(score)})
+            processed_results.append(
+                {"label": readable_label, "score": float(score)}
+            )
 
         return processed_results
 

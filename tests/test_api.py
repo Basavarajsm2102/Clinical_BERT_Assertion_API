@@ -1,7 +1,6 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.utils import (
     apply_hybrid_pipeline,
@@ -143,28 +142,38 @@ class TestHybridPipeline:
 class TestUtilityFunctions:
     def test_detect_conditional_phrases_positive(self):
         """Test conditional phrase detection - positive cases"""
-        assert detect_conditional_phrases("If symptoms worsen, call doctor.") == True
-        assert detect_conditional_phrases("Should we increase dosage?") == True
-        assert detect_conditional_phrases("Unless contraindicated, proceed.") == True
-        assert detect_conditional_phrases("When fever spikes, administer meds.") == True
+        assert detect_conditional_phrases(
+            "If symptoms worsen, call doctor."
+        ) is True
+        assert detect_conditional_phrases("Should we increase dosage?") is True
+        assert detect_conditional_phrases(
+            "Unless contraindicated, proceed."
+        ) is True
+        assert detect_conditional_phrases(
+            "When fever spikes, administer meds."
+        ) is True
 
     def test_detect_conditional_phrases_negative(self):
         """Test conditional phrase detection - negative cases"""
-        assert detect_conditional_phrases("The patient has fever.") == False
-        assert detect_conditional_phrases("Administer medication.") == False
+        assert detect_conditional_phrases("The patient has fever.") is False
+        assert detect_conditional_phrases("Administer medication.") is False
 
     def test_detect_uncertainty_phrases_positive(self):
         """Test uncertainty phrase detection - positive cases"""
-        assert detect_uncertainty_phrases("The patient may have pneumonia.") == True
-        assert detect_uncertainty_phrases("Suspect infection present.") == True
-        assert detect_uncertainty_phrases("Appears to be stable.") == True
-        assert detect_uncertainty_phrases("Potential complications noted.") == True
-        assert detect_uncertainty_phrases("Probably needs antibiotics.") == True
+        assert detect_uncertainty_phrases(
+            "The patient may have pneumonia."
+        ) is True
+        assert detect_uncertainty_phrases("Suspect infection present.") is True
+        assert detect_uncertainty_phrases("Appears to be stable.") is True
+        assert detect_uncertainty_phrases(
+            "Potential complications noted."
+        ) is True
+        assert detect_uncertainty_phrases("Probably needs antibiotics.") is True
 
     def test_detect_uncertainty_phrases_negative(self):
         """Test uncertainty phrase detection - negative cases"""
-        assert detect_uncertainty_phrases("The patient has pneumonia.") == False
-        assert detect_uncertainty_phrases("Administer antibiotics.") == False
+        assert detect_uncertainty_phrases("The patient has pneumonia.") is False
+        assert detect_uncertainty_phrases("Administer antibiotics.") is False
 
 
 class TestEnhancedPredictionEndpoints:
