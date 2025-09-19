@@ -42,9 +42,7 @@ def sanitize_clinical_text(text: str) -> str:
     sanitized = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN]", sanitized)
     sanitized = re.sub(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b", "[PHONE]", sanitized)
     sanitized = re.sub(
-        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-        "[EMAIL]",
-        sanitized
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "[EMAIL]", sanitized
     )
     sanitized = re.sub(r"\b\d{6,}\b", "[ID]", sanitized)
 
@@ -85,9 +83,18 @@ def apply_hybrid_pipeline(predictions: list, sentences: list) -> list:
         elif any(
             word in sentence.lower()
             for word in [
-                "may", "might", "could", "possibly", "likely",
-                "probable", "probably", "appears to", "suggests",
-                "suspect", "potential", "possible",
+                "may",
+                "might",
+                "could",
+                "possibly",
+                "likely",
+                "probable",
+                "probably",
+                "appears to",
+                "suggests",
+                "suspect",
+                "potential",
+                "possible",
             ]
         ):
             if model_label == "PRESENT":
@@ -117,8 +124,17 @@ def detect_conditional_phrases(sentence: str) -> bool:
 def detect_uncertainty_phrases(sentence: str) -> bool:
     """Check if sentence contains uncertainty words that might indicate possibility."""
     uncertainty_words = [
-        "may", "might", "could", "possibly", "likely",
-        "probable", "probably", "appears to", "suggests",
-        "suspect", "potential", "possible",
+        "may",
+        "might",
+        "could",
+        "possibly",
+        "likely",
+        "probable",
+        "probably",
+        "appears to",
+        "suggests",
+        "suspect",
+        "potential",
+        "possible",
     ]
     return any(word in sentence.lower() for word in uncertainty_words)

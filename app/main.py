@@ -239,9 +239,7 @@ async def predict_batch(
         prediction_count += len(request.sentences)
 
         REQUEST_COUNT.labels(
-            method="POST",
-            endpoint="/predict/batch",
-            status="200"
+            method="POST", endpoint="/predict/batch", status="200"
         ).inc()
         for result in enhanced_results:
             MODEL_PREDICTIONS_TOTAL.labels(label=result["label"]).inc()
@@ -270,9 +268,7 @@ async def predict_batch(
 
     except Exception as e:
         REQUEST_COUNT.labels(
-            method="POST",
-            endpoint="/predict/batch",
-            status="500"
+            method="POST", endpoint="/predict/batch", status="500"
         ).inc()
         logger.error(f"Batch prediction failed {request_id}: {str(e)}")
         raise HTTPException(
