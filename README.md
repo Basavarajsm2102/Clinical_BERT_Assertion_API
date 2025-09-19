@@ -1,5 +1,7 @@
 # Clinical BERT Real-Time Inference API - Production Release
 
+<!-- Pipeline trigger -->
+
 [![CI/CD Status](https://github.com/yourusername/clinical-bert-api/workflows/CI/badge.svg)](https://github.com/yourusername/clinical-bert-api/actions)
 [![Cloud Run](https://img.shields.io/badge/Cloud%20Run-deployed-blue)](https://your-service-url)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
