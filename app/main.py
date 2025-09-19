@@ -4,6 +4,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
+from typing import List, Optional
 
 # Third party imports
 import uvicorn
@@ -167,7 +168,7 @@ if os.getenv("ENABLE_RATE_LIMITING", "false").lower() == "true":
     summary="Service health check",
     description="Returns service health status and model readiness",
 )
-async def health_check():
+async def health_check() -> HealthResponse:
     """Comprehensive health check endpoint"""
     global model, app_start_time, prediction_count
 
@@ -213,7 +214,7 @@ async def health_check():
 
 # Metrics endpoint for Prometheus
 @app.get("/metrics", tags=["Monitoring"])
-async def metrics():
+async def metrics() -> Response:
     """Prometheus metrics endpoint"""
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
@@ -225,7 +226,7 @@ async def metrics():
     tags=["Model"],
     dependencies=[Depends(verify_api_key)] if os.getenv("REQUIRE_API_KEY") else [],
 )
-async def model_info():
+async def model_info() -> ModelInfoResponse:
     """Get detailed model information"""
     if not model or not model.is_loaded():
         raise HTTPException(
@@ -245,7 +246,7 @@ async def model_info():
     description="Classify a single clinical sentence for assertion status",
 )
 async def predict_assertion(
-    request: PredictionRequest, background_tasks: BackgroundTasks, req: Request = None
+    request: PredictionRequest, background_tasks: BackgroundTasks, req: Optional[Request] = None
 ):
     """Enhanced prediction endpoint with monitoring and security"""
     global model, prediction_count
@@ -295,7 +296,9 @@ async def predict_assertion(
 
         return PredictionResponse(
             label=result["label"],
+            model_label=result["label"],
             score=result["score"],
+            rule_applied=None,
             prediction_time_ms=prediction_time * 1000,
             request_id=request_id,
         )
@@ -320,7 +323,7 @@ async def predict_assertion(
 )
 async def predict_batch(
     request: BatchPredictionRequest, background_tasks: BackgroundTasks
-):
+) -> BatchPredictionResponse:
     """Enhanced batch prediction with optimizations"""
     global model, prediction_count
 
@@ -370,8 +373,11 @@ async def predict_batch(
         predictions = [
             PredictionResponse(
                 label=result["label"],
+                model_label=result["label"],
                 score=result["score"],
+                rule_applied=None,
                 prediction_time_ms=(prediction_time * 1000) / len(results),
+                request_id=request_id,
             )
             for result in results
         ]
@@ -411,7 +417,7 @@ async def predict_batch(
     tags=["Monitoring"],
     dependencies=[Depends(verify_api_key)] if os.getenv("REQUIRE_API_KEY") else [],
 )
-async def system_metrics():
+async def system_metrics() -> MetricsResponse:
     """Get system performance metrics"""
     global app_start_time, prediction_count
 
@@ -429,7 +435,7 @@ async def system_metrics():
 
 # Root endpoint
 @app.get("/", tags=["Root"])
-async def root():
+async def root() -> dict:
     """API information and status"""
     return {
         "name": "Clinical BERT Assertion API",
@@ -457,12 +463,12 @@ async def root():
 
 
 # Background tasks
-async def log_prediction_analytics(request_id: str, label: str, prediction_time: float):
+async def log_prediction_analytics(request_id: str, label: str, prediction_time: float) -> None:
     """Log prediction analytics for monitoring"""
     logger.info(f"Analytics {request_id}: label={label}, time={prediction_time:.3f}s")
 
 
-async def log_batch_analytics(request_id: str, batch_size: int, prediction_time: float):
+async def log_batch_analytics(request_id: str, batch_size: int, prediction_time: float) -> None:
     """Log batch prediction analytics"""
     logger.info(
         f"Batch analytics {request_id}: size={batch_size}, time={prediction_time:.3f}s"
@@ -471,7 +477,7 @@ async def log_batch_analytics(request_id: str, batch_size: int, prediction_time:
 
 # Custom exception handlers
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Enhanced HTTP exception handler"""
     REQUEST_COUNT.labels(
         method=request.method, endpoint=request.url.path, status=str(exc.status_code)
@@ -489,7 +495,7 @@ async def http_exception_handler(request, exc):
 
 
 @app.exception_handler(Exception)
-async def general_exception_handler(request, exc):
+async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Enhanced general exception handler"""
     REQUEST_COUNT.labels(
         method=request.method, endpoint=request.url.path, status="500"
@@ -510,7 +516,7 @@ async def general_exception_handler(request, exc):
 
 # Application startup event
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Additional startup configuration"""
     logger.info("📝 Configuring application...")
 

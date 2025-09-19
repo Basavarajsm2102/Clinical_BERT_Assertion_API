@@ -14,7 +14,7 @@ security = HTTPBearer(auto_error=False)
 class APIKeyAuth:
     """API Key authentication handler"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.api_keys = self._load_api_keys()
 
     def _load_api_keys(self) -> set:
@@ -61,7 +61,8 @@ async def verify_api_key(
         )
 
     if not auth_handler.verify_key(api_key):
-        logger.warning(f"Invalid API key from {request.client.host}")
+        client_host = request.client.host if request.client else "unknown"
+        logger.warning(f"Invalid API key from {client_host}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
         )

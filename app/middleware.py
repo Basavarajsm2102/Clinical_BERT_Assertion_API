@@ -17,7 +17,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers"""
 
     def __init__(
-        self, app, csp_policy: str | None = None, hsts_max_age: int = 31536000
+        self, app: BaseHTTPMiddleware, csp_policy: str | None = None, hsts_max_age: int = 31536000
     ) -> None:
         super().__init__(app)
         self.csp_policy = csp_policy
@@ -45,7 +45,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware"""
 
-    def __init__(self, app, requests_per_minute: int = 100) -> None:
+    def __init__(self, app: BaseHTTPMiddleware, requests_per_minute: int = 100) -> None:
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.requests: Dict[str, List[float]] = defaultdict(list)
@@ -152,7 +152,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 class MetricsMiddleware(BaseHTTPMiddleware):
     """Request metrics middleware"""
 
-    def __init__(self, app) -> None:
+    def __init__(self, app: BaseHTTPMiddleware) -> None:
         super().__init__(app)
         self.request_count = 0
         self.error_count = 0
