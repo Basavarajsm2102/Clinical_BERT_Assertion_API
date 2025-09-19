@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class ClinicalAssertionModel:
     """Clinical Assertion Model for real-time inference"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = None
         self.tokenizer = None
         self.pipeline = None
@@ -31,7 +31,7 @@ class ClinicalAssertionModel:
         self._loaded = False
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    async def load_model(self):
+    async def load_model(self) -> None:
         """Load the clinical assertion model"""
         try:
             logger.info(f"Loading model {self.model_name} on device: {self.device}")

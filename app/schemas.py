@@ -26,7 +26,7 @@ class PredictionRequest(BaseModel):
     )
 
     @validator("sentence")
-    def validate_sentence(cls, v):
+    def validate_sentence(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("Sentence cannot be empty")
         return v.strip()
@@ -70,11 +70,11 @@ class BatchPredictionRequest(BaseModel):
     """Request model for batch prediction"""
 
     sentences: List[str] = Field(
-        ..., min_items=1, max_items=100, description="List of sentences"
+        ..., description="List of sentences"
     )
 
     @validator("sentences")
-    def validate_sentences(cls, v):
+    def validate_sentences(cls, v: List[str]) -> List[str]:
         if not v:
             raise ValueError("Sentences list cannot be empty")
 
