@@ -10,7 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import Response
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Histogram,
+    generate_latest,
+)
 
 from .middleware import (
     MetricsMiddleware,
@@ -27,7 +32,11 @@ from .schemas import (
     PredictionRequest,
     PredictionResponse,
 )
-from .utils import apply_hybrid_pipeline, get_system_metrics, sanitize_clinical_text
+from .utils import (
+    apply_hybrid_pipeline,
+    get_system_metrics,
+    sanitize_clinical_text,
+)
 
 # Configure structured logging
 logging.basicConfig(
@@ -38,10 +47,14 @@ logger = logging.getLogger(__name__)
 
 # Prometheus metrics
 REQUEST_COUNT = Counter(
-    "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status"],
 )
 REQUEST_DURATION = Histogram(
-    "http_request_duration_seconds", "HTTP request duration", ["method", "endpoint"]
+    "http_request_duration_seconds",
+    "HTTP request duration",
+    ["method", "endpoint"],
 )
 MODEL_INFERENCE_DURATION = Histogram(
     "model_inference_duration_seconds", "Model inference time"
@@ -115,7 +128,9 @@ app.add_middleware(
     ),
 )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"])
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"]
+)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(MetricsMiddleware)
@@ -157,7 +172,9 @@ async def predict_assertion(
     global model, prediction_count
 
     if not model or not model.is_loaded():
-        REQUEST_COUNT.labels(method="POST", endpoint="/predict", status="503").inc()
+        REQUEST_COUNT.labels(
+            method="POST", endpoint="/predict", status="503"
+        ).inc()
         raise HTTPException(status_code=503, detail="Model not loaded")
 
     request_id = str(uuid.uuid4())
@@ -174,13 +191,17 @@ async def predict_assertion(
             model_result = await model.predict(sanitized_sentence)
 
         # Apply hybrid pipeline for rule-based enhancements
-        enhanced_results = apply_hybrid_pipeline([model_result], [sanitized_sentence])
+        enhanced_results = apply_hybrid_pipeline(
+            [model_result], [sanitized_sentence]
+        )
         result = enhanced_results[0]
 
         prediction_time = time.time() - start_time
         prediction_count += 1
 
-        REQUEST_COUNT.labels(method="POST", endpoint="/predict", status="200").inc()
+        REQUEST_COUNT.labels(
+            method="POST", endpoint="/predict", status="200"
+        ).inc()
         MODEL_PREDICTIONS_TOTAL.labels(label=result["label"]).inc()
 
         logger.info(
@@ -199,12 +220,20 @@ async def predict_assertion(
         )
 
     except Exception as e:
-        REQUEST_COUNT.labels(method="POST", endpoint="/predict", status="500").inc()
+        REQUEST_COUNT.labels(
+            method="POST", endpoint="/predict", status="500"
+        ).inc()
         logger.error(f"Prediction failed {request_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Prediction failed: {str(e)}"
+        )
 
 
-@app.post("/predict/batch", response_model=BatchPredictionResponse, tags=["Prediction"])
+@app.post(
+    "/predict/batch",
+    response_model=BatchPredictionResponse,
+    tags=["Prediction"],
+)
 async def predict_batch(
     request: BatchPredictionRequest, background_tasks: BackgroundTasks
 ):
@@ -217,7 +246,8 @@ async def predict_batch(
     max_batch_size = int(os.getenv("MAX_BATCH_SIZE", "100"))
     if len(request.sentences) > max_batch_size:
         raise HTTPException(
-            status_code=400, detail=f"Batch size cannot exceed {max_batch_size}"
+            status_code=400,
+            detail=f"Batch size cannot exceed {max_batch_size}",
         )
 
     request_id = str(uuid.uuid4())
@@ -225,7 +255,9 @@ async def predict_batch(
     try:
         start_time = time.time()
 
-        sanitized_sentences = [sanitize_clinical_text(s) for s in request.sentences]
+        sanitized_sentences = [
+            sanitize_clinical_text(s) for s in request.sentences
+        ]
 
         logger.info(
             f"Batch prediction {request_id}: batch_size={len(request.sentences)}"
@@ -235,7 +267,9 @@ async def predict_batch(
             model_results = await model.predict_batch(sanitized_sentences)
 
         # Apply hybrid pipeline for rule-based enhancements
-        enhanced_results = apply_hybrid_pipeline(model_results, sanitized_sentences)
+        enhanced_results = apply_hybrid_pipeline(
+            model_results, sanitized_sentences
+        )
 
         prediction_time = time.time() - start_time
         prediction_count += len(request.sentences)
@@ -252,7 +286,8 @@ async def predict_batch(
                 model_label=result["model_label"],
                 score=result["score"],
                 rule_applied=result["rule_applied"],
-                prediction_time_ms=(prediction_time * 1000) / len(enhanced_results),
+                prediction_time_ms=(prediction_time * 1000)
+                / len(enhanced_results),
             )
             for result in enhanced_results
         ]

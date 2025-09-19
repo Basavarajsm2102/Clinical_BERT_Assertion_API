@@ -32,7 +32,9 @@ class ClinicalAssertionModel:
     async def load_model(self):
         """Load the clinical assertion model"""
         try:
-            logger.info(f"Loading model {self.model_name} on device: {self.device}")
+            logger.info(
+                f"Loading model {self.model_name} on device: {self.device}"
+            )
             start_time = time.time()
 
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -53,7 +55,9 @@ class ClinicalAssertionModel:
             self.model.eval()
 
             load_time = time.time() - start_time
-            logger.info(f"Model loaded successfully in {load_time:.2f} seconds")
+            logger.info(
+                f"Model loaded successfully in {load_time:.2f} seconds"
+            )
 
             self._loaded = True
 
@@ -72,7 +76,9 @@ class ClinicalAssertionModel:
 
         try:
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, self._predict_sync, sentence)
+            result = await loop.run_in_executor(
+                None, self._predict_sync, sentence
+            )
             return result
         except Exception as e:
             logger.error(f"Prediction error: {str(e)}")
@@ -100,7 +106,9 @@ class ClinicalAssertionModel:
 
         return {"label": readable_label, "score": float(score)}
 
-    async def predict_batch(self, sentences: List[str]) -> List[Dict[str, Any]]:
+    async def predict_batch(
+        self, sentences: List[str]
+    ) -> List[Dict[str, Any]]:
         """Predict assertion status for multiple sentences"""
         if not self.is_loaded():
             raise RuntimeError("Model is not loaded")
@@ -115,7 +123,9 @@ class ClinicalAssertionModel:
             logger.error(f"Batch prediction error: {str(e)}")
             raise RuntimeError(f"Batch prediction failed: {str(e)}")
 
-    def _predict_batch_sync(self, sentences: List[str]) -> List[Dict[str, Any]]:
+    def _predict_batch_sync(
+        self, sentences: List[str]
+    ) -> List[Dict[str, Any]]:
         """Synchronous batch prediction"""
         with torch.no_grad():
             results = self.pipeline(
@@ -129,7 +139,9 @@ class ClinicalAssertionModel:
             label = result["label"]
             score = result["score"]
             readable_label = self.label_mapping.get(label, label)
-            processed_results.append({"label": readable_label, "score": float(score)})
+            processed_results.append(
+                {"label": readable_label, "score": float(score)}
+            )
 
         return processed_results
 

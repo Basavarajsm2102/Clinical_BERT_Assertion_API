@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers"""
 
-    def __init__(self, app, csp_policy: str = None, hsts_max_age: int = 31536000):
+    def __init__(
+        self, app, csp_policy: str = None, hsts_max_age: int = 31536000
+    ):
         super().__init__(app)
         self.csp_policy = csp_policy
         self.hsts_max_age = hsts_max_age
@@ -60,7 +62,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         client_requests = self.requests[client_id]
         recent_requests = [
-            req_time for req_time in client_requests if req_time > current_time - 60
+            req_time
+            for req_time in client_requests
+            if req_time > current_time - 60
         ]
 
         if len(recent_requests) >= self.requests_per_minute:

@@ -60,7 +60,8 @@ class TestBatchPredictionEndpoint:
 
         with patch("app.main.model", mock_model):
             response = client.post(
-                "/predict/batch", json={"sentences": ["Sentence 1", "Sentence 2"]}
+                "/predict/batch",
+                json={"sentences": ["Sentence 1", "Sentence 2"]},
             )
             assert response.status_code == 200
             data = response.json()
@@ -142,10 +143,19 @@ class TestHybridPipeline:
 class TestUtilityFunctions:
     def test_detect_conditional_phrases_positive(self):
         """Test conditional phrase detection - positive cases"""
-        assert detect_conditional_phrases("If symptoms worsen, call doctor.") is True
+        assert (
+            detect_conditional_phrases("If symptoms worsen, call doctor.")
+            is True
+        )
         assert detect_conditional_phrases("Should we increase dosage?") is True
-        assert detect_conditional_phrases("Unless contraindicated, proceed.") is True
-        assert detect_conditional_phrases("When fever spikes, administer meds.") is True
+        assert (
+            detect_conditional_phrases("Unless contraindicated, proceed.")
+            is True
+        )
+        assert (
+            detect_conditional_phrases("When fever spikes, administer meds.")
+            is True
+        )
 
     def test_detect_conditional_phrases_negative(self):
         """Test conditional phrase detection - negative cases"""
@@ -154,15 +164,25 @@ class TestUtilityFunctions:
 
     def test_detect_uncertainty_phrases_positive(self):
         """Test uncertainty phrase detection - positive cases"""
-        assert detect_uncertainty_phrases("The patient may have pneumonia.") is True
+        assert (
+            detect_uncertainty_phrases("The patient may have pneumonia.")
+            is True
+        )
         assert detect_uncertainty_phrases("Suspect infection present.") is True
         assert detect_uncertainty_phrases("Appears to be stable.") is True
-        assert detect_uncertainty_phrases("Potential complications noted.") is True
-        assert detect_uncertainty_phrases("Probably needs antibiotics.") is True
+        assert (
+            detect_uncertainty_phrases("Potential complications noted.")
+            is True
+        )
+        assert (
+            detect_uncertainty_phrases("Probably needs antibiotics.") is True
+        )
 
     def test_detect_uncertainty_phrases_negative(self):
         """Test uncertainty phrase detection - negative cases"""
-        assert detect_uncertainty_phrases("The patient has pneumonia.") is False
+        assert (
+            detect_uncertainty_phrases("The patient has pneumonia.") is False
+        )
         assert detect_uncertainty_phrases("Administer antibiotics.") is False
 
 
@@ -174,7 +194,8 @@ class TestEnhancedPredictionEndpoints:
 
         with patch("app.main.model", mock_model):
             response = client.post(
-                "/predict", json={"sentence": "If symptoms persist, call doctor."}
+                "/predict",
+                json={"sentence": "If symptoms persist, call doctor."},
             )
             assert response.status_code == 200
             data = response.json()

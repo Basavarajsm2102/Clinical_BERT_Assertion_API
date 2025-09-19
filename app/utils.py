@@ -42,7 +42,9 @@ def sanitize_clinical_text(text: str) -> str:
     sanitized = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN]", sanitized)
     sanitized = re.sub(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b", "[PHONE]", sanitized)
     sanitized = re.sub(
-        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "[EMAIL]", sanitized
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+        "[EMAIL]",
+        sanitized,
     )
     sanitized = re.sub(r"\b\d{6,}\b", "[ID]", sanitized)
 

@@ -24,5 +24,7 @@ def mock_model():
     mock = Mock()
     mock.is_loaded.return_value = True
     mock.predict = AsyncMock(return_value={"label": "ABSENT", "score": 0.9842})
-    mock.predict_batch = AsyncMock(return_value=[{"label": "ABSENT", "score": 0.9842}])
+    mock.predict_batch = AsyncMock(
+        return_value=[{"label": "ABSENT", "score": 0.9842}]
+    )
     return mock
