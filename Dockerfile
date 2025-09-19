@@ -44,7 +44,7 @@ RUN chmod +x entrypoint.sh
 USER appuser
 
 # Health check for Cloud Run (extended for model loading)
-HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
+HEALTHCHECK --interval=30s --timeout=60s --start-period=520s --retries=5 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 EXPOSE 8080

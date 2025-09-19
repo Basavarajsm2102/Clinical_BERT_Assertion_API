@@ -37,11 +37,182 @@ This API provides **real-time clinical assertion detection** using the `bvanaken
 - 🔄 **Full CI/CD pipeline** with GitHub Actions
 - 🛡️ **Production-hardened** with security scanning
 
-### Architecture
+### Architecture Overview
+
+```mermaid
+graph TB
+    %% Client Layer
+    subgraph "Client Applications"
+        WEB[Web Applications]
+        MOBILE[Mobile Apps]
+        EHR[EHR Systems]
+        API_CLI[API Clients]
+    end
+
+    %% API Gateway Layer
+    subgraph "API Gateway"
+        FASTAPI[FastAPI Server]
+        AUTH[Authentication Middleware]
+        RATE[Rate Limiting]
+        CORS[CORS Middleware]
+        LOG[Request Logging]
+    end
+
+    %% Core Processing Layer
+    subgraph "Core Processing"
+        ROUTER[API Router]
+        VALIDATOR[Input Validation]
+        SANITIZER[Text Sanitization]
+        HYBRID[Hybrid Pipeline]
+    end
+
+    %% ML Model Layer
+    subgraph "ML Model Layer"
+        MODEL[Clinical BERT Model<br/>bvanaken/clinical-assertion-negation-bert]
+        TOKENIZER[BERT Tokenizer]
+        PIPELINE[Transformers Pipeline]
+        DEVICE[CPU/GPU Device]
+    end
+
+    %% Data Processing Layer
+    subgraph "Data Processing"
+        PREPROCESS[Text Preprocessing]
+        INFERENCE[Model Inference]
+        POSTPROCESS[Result Processing]
+        BATCH[Batch Processing]
+    end
+
+    %% Monitoring & Observability
+    subgraph "Monitoring Stack"
+        PROMETHEUS[Prometheus Metrics]
+        HEALTH[Health Checks]
+        LOGGING[Structured Logging]
+        ALERTS[Alert Manager]
+    end
+
+    %% Infrastructure Layer
+    subgraph "Infrastructure"
+        CLOUD_RUN[Google Cloud Run]
+        GCR[Google Container Registry]
+        SECRET_MANAGER[Secret Manager]
+        VPC[VPC Network]
+    end
+
+    %% CI/CD Pipeline
+    subgraph "CI/CD Pipeline"
+        GITHUB[GitHub Actions]
+        TESTS[Automated Tests<br/>78.97% Coverage]
+        SECURITY[Security Scanning<br/>Bandit, Safety]
+        BUILD[Docker Build]
+        DEPLOY[Auto Deployment]
+    end
+
+    %% External Dependencies
+    subgraph "External Dependencies"
+        HUGGINGFACE[Hugging Face Hub<br/>Model Repository]
+        PYPI[PyPI Packages]
+        DOCKER_HUB[Docker Hub]
+    end
+
+    %% Data Flow
+    WEB --> FASTAPI
+    MOBILE --> FASTAPI
+    EHR --> FASTAPI
+    API_CLI --> FASTAPI
+
+    FASTAPI --> AUTH
+    AUTH --> RATE
+    RATE --> CORS
+    CORS --> LOG
+    LOG --> ROUTER
+
+    ROUTER --> VALIDATOR
+    VALIDATOR --> SANITIZER
+    SANITIZER --> HYBRID
+    HYBRID --> MODEL
+
+    MODEL --> TOKENIZER
+    MODEL --> PIPELINE
+    PIPELINE --> DEVICE
+
+    HYBRID --> PREPROCESS
+    PREPROCESS --> INFERENCE
+    INFERENCE --> POSTPROCESS
+    POSTPROCESS --> BATCH
+
+    FASTAPI --> PROMETHEUS
+    FASTAPI --> HEALTH
+    FASTAPI --> LOGGING
+    PROMETHEUS --> ALERTS
+
+    CLOUD_RUN --> GCR
+    CLOUD_RUN --> SECRET_MANAGER
+    CLOUD_RUN --> VPC
+
+    GITHUB --> TESTS
+    TESTS --> SECURITY
+    SECURITY --> BUILD
+    BUILD --> DEPLOY
+    DEPLOY --> CLOUD_RUN
+
+    MODEL --> HUGGINGFACE
+    BUILD --> PYPI
+    BUILD --> DOCKER_HUB
+
+    %% Styling
+    classDef clientClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef apiClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef processingClass fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef mlClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef infraClass fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef cicdClass fill:#f9fbe7,stroke:#827717,stroke-width:2px
+    classDef externalClass fill:#efebe9,stroke:#3e2723,stroke-width:2px
+
+    class WEB,MOBILE,EHR,API_CLI clientClass
+    class FASTAPI,AUTH,RATE,CORS,LOG apiClass
+    class ROUTER,VALIDATOR,SANITIZER,HYBRID,PREPROCESS,INFERENCE,POSTPROCESS,BATCH processingClass
+    class MODEL,TOKENIZER,PIPELINE,DEVICE mlClass
+    class CLOUD_RUN,GCR,SECRET_MANAGER,VPC infraClass
+    class GITHUB,TESTS,SECURITY,BUILD,DEPLOY cicdClass
+    class HUGGINGFACE,PYPI,DOCKER_HUB externalClass
 ```
-Client Request → FastAPI → Clinical BERT Model → Classification Result
-                      ↓
-               Prometheus Metrics → Monitoring Dashboard
+
+### Detailed Component Architecture
+
+```mermaid
+graph LR
+    subgraph "Application Architecture"
+        A[FastAPI Application] --> B[API Routes]
+        B --> C[Middleware Stack]
+        C --> D[Pydantic Models]
+        D --> E[Business Logic]
+    end
+
+    subgraph "ML Architecture"
+        F[Clinical BERT Model] --> G[Tokenizer]
+        F --> H[Classification Head]
+        G --> I[Input Processing]
+        H --> J[Output Processing]
+    end
+
+    subgraph "Data Flow"
+        K[Client Request] --> L[Input Validation]
+        L --> M[Text Sanitization]
+        M --> N[Model Inference]
+        N --> O[Result Formatting]
+        O --> P[Response]
+    end
+
+    subgraph "Deployment Architecture"
+        Q[Docker Container] --> R[Cloud Run Service]
+        R --> S[Load Balancer]
+        S --> T[Auto Scaling]
+        T --> U[Monitoring]
+    end
+
+    A --> F
+    E --> N
+    Q --> R
 ```
 
 ### Performance Metrics
