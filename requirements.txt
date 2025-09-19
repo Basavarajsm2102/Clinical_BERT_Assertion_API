@@ -4,7 +4,7 @@ uvicorn[standard]==0.24.0
 pydantic==2.5.0
 
 # Machine Learning dependencies (CPU-only for Cloud Run)
-torch-cpu==2.2.0
+torch==2.4.0
 transformers==4.35.2
 tokenizers==0.15.0
 accelerate==0.24.1
