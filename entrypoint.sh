@@ -8,8 +8,8 @@ set -e
 PORT="${PORT:-8080}"
 echo "🚀 Starting Clinical BERT API on port $PORT"
 
-# Ensure PATH includes local pip binaries
-export PATH="/home/appuser/.local/bin:$PATH"
+# Ensure PATH includes installed binaries
+export PATH="/usr/local/bin:$PATH"
 
 # Change to app directory
 cd /code
