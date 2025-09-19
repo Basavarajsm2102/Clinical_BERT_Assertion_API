@@ -34,8 +34,11 @@ COPY --chown=appuser:appuser ./app ./app
 RUN echo '#!/bin/bash\n\
 PORT=${PORT:-8080}\n\
 echo "Starting server on port $PORT"\n\
+export PATH="/home/appuser/.local/bin:$PATH"\n\
+cd /code\n\
 uvicorn app.main:app --host 0.0.0.0 --port $PORT' > /code/entrypoint.sh && \
-    chmod +x /code/entrypoint.sh
+    chmod +x /code/entrypoint.sh && \
+    chown appuser:appuser /code/entrypoint.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
