@@ -198,11 +198,18 @@ async def health_check() -> HealthResponse:
             "system_metrics": system_metrics,
         }
 
-        # Add model info if loaded
-        if model_loaded:
-            health_data["model_info"] = model.get_model_info()
-
-        return HealthResponse(**health_data)
+        # Create response with proper typing
+        return HealthResponse(
+            status="healthy" if model_loaded else "unhealthy",
+            model_loaded=model_loaded,
+            timestamp=time.time(),
+            version="1.0.0",
+            environment=os.getenv("ENVIRONMENT", "development"),
+            uptime_seconds=uptime_seconds,
+            total_predictions=prediction_count,
+            system_metrics=system_metrics,
+            model_info=model.get_model_info() if model_loaded else None,
+        )
 
     except Exception as e:
         logger.error(f"Health check failed: {e}")
@@ -249,7 +256,7 @@ async def predict_assertion(
     request: PredictionRequest,
     background_tasks: BackgroundTasks,
     req: Optional[Request] = None,
-):
+) -> PredictionResponse:
     """Enhanced prediction endpoint with monitoring and security"""
     global model, prediction_count
 
