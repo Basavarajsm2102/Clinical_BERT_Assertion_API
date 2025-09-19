@@ -21,6 +21,8 @@ jobs:
         cache: 'pip'
     - run: |
         pip install -r requirements.txt
+        python -m black --check --line-length 79 app/ tests/
+        python -m isort --check-only --profile black app/ tests/
         flake8 app/ tests/
         pytest tests/ -v --cov=app --cov-fail-under=80
     - run: |
