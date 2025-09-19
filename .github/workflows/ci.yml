@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master, main, develop]
+    branches: [main, develop]
   pull_request:
-    branches: [master, main, develop]
+    branches: [main, develop]
 
 jobs:
   test:
@@ -24,7 +24,7 @@ jobs:
         black --check app/ tests/
         isort --check-only app/ tests/ 
         flake8 app/ tests/
-        pytest tests/ -v --cov=app --cov-fail-under=65
+        pytest tests/ -v --cov=app --cov-fail-under=80
     - run: |
         bandit -r app/
         safety check
