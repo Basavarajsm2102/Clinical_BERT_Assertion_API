@@ -66,7 +66,7 @@ prediction_count = 0
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> None:
     """Enhanced application lifespan management"""
     global model
 
