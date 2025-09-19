@@ -17,11 +17,10 @@ class AssertionLabel(str, Enum):
 
 class PredictionRequest(BaseModel):
     """Request model for single prediction"""
+
     model_config = ConfigDict(
         protected_namespaces=(),
-        json_schema_extra={
-            "example": {"sentence": "The patient denies chest pain."}
-        }
+        json_schema_extra={"example": {"sentence": "The patient denies chest pain."}},
     )
 
     sentence: str = Field(
@@ -31,7 +30,7 @@ class PredictionRequest(BaseModel):
         description="Clinical sentence to classify",
     )
 
-    @field_validator('sentence')
+    @field_validator("sentence")
     @classmethod
     def validate_sentence(cls, v: str) -> str:
         if not v or not v.strip():
@@ -41,6 +40,7 @@ class PredictionRequest(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Response model for single prediction"""
+
     model_config = ConfigDict(
         protected_namespaces=(),
         json_schema_extra={
@@ -48,81 +48,104 @@ class PredictionResponse(BaseModel):
                 "label": "ABSENT",
                 "score": 0.9842,
                 "prediction_time_ms": 45.2,
-                "request_id": "req-12345"
+                "request_id": "req-12345",
             }
-        }
+        },
     )
 
     label: str = Field(..., description="Predicted assertion label")
-    score: float = Field(..., ge=0.0, le=1.0, description="Confidence score between 0 and 1")
-    prediction_time_ms: Optional[float] = Field(None, description="Prediction time in milliseconds")
+    score: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence score between 0 and 1"
+    )
+    prediction_time_ms: Optional[float] = Field(
+        None, description="Prediction time in milliseconds"
+    )
     request_id: Optional[str] = Field(None, description="Request identifier")
 
 
 class BatchPredictionRequest(BaseModel):
     """Request model for batch prediction"""
+
     model_config = ConfigDict(protected_namespaces=())
 
     sentences: List[str] = Field(
         ...,
         min_length=1,
         max_length=100,
-        description="List of clinical sentences to classify"
+        description="List of clinical sentences to classify",
     )
 
-    @field_validator('sentences')
+    @field_validator("sentences")
     @classmethod
     def validate_sentences(cls, v: List[str]) -> List[str]:
         if not v:
-            raise ValueError('Sentences list cannot be empty')
+            raise ValueError("Sentences list cannot be empty")
 
         for i, sentence in enumerate(v):
             if not sentence or not sentence.strip():
-                raise ValueError(f'Sentence at index {i} cannot be empty or whitespace only')
+                raise ValueError(
+                    f"Sentence at index {i} cannot be empty or whitespace only"
+                )
             if len(sentence) > 1000:
-                raise ValueError(f'Sentence at index {i} is too long (max 1000 characters)')
+                raise ValueError(
+                    f"Sentence at index {i} is too long (max 1000 characters)"
+                )
 
         return [sentence.strip() for sentence in v]
 
 
 class BatchPredictionResponse(BaseModel):
     """Response model for batch prediction"""
+
     model_config = ConfigDict(protected_namespaces=())
 
-    predictions: List[PredictionResponse] = Field(..., description="List of predictions for each sentence")
+    predictions: List[PredictionResponse] = Field(
+        ..., description="List of predictions for each sentence"
+    )
     batch_size: int = Field(..., description="Number of sentences processed")
-    total_prediction_time_ms: Optional[float] = Field(None, description="Total time for batch prediction")
+    total_prediction_time_ms: Optional[float] = Field(
+        None, description="Total time for batch prediction"
+    )
     request_id: Optional[str] = Field(None, description="Request identifier")
 
 
 class HealthResponse(BaseModel):
     """Response model for health check endpoint"""
+
     model_config = ConfigDict(protected_namespaces=())
 
     status: str = Field(..., description="Overall health status")
-    model_loaded: bool = Field(..., description="Whether the ML model is loaded and ready")
+    model_loaded: bool = Field(
+        ..., description="Whether the ML model is loaded and ready"
+    )
     timestamp: float = Field(..., description="Unix timestamp of the health check")
     version: Optional[str] = Field("1.0.0", description="API version")
     environment: Optional[str] = Field(None, description="Environment name")
     uptime_seconds: Optional[float] = Field(None, description="Uptime in seconds")
     total_predictions: Optional[int] = Field(None, description="Total predictions made")
-    system_metrics: Optional[Dict[str, Any]] = Field(None, description="System performance metrics")
+    system_metrics: Optional[Dict[str, Any]] = Field(
+        None, description="System performance metrics"
+    )
     model_info: Optional[Dict[str, Any]] = Field(None, description="Model information")
 
 
 class MetricsResponse(BaseModel):
     """Response model for system metrics"""
+
     model_config = ConfigDict(protected_namespaces=())
 
     total_predictions: int = Field(..., description="Total number of predictions made")
     uptime_seconds: float = Field(..., description="API uptime in seconds")
-    memory_usage_mb: Optional[float] = Field(None, description="Current memory usage in MB")
+    memory_usage_mb: Optional[float] = Field(
+        None, description="Current memory usage in MB"
+    )
     cpu_usage_percent: Optional[float] = Field(None, description="CPU usage percentage")
     model_loaded: bool = Field(..., description="Whether model is loaded and ready")
 
 
 class ModelInfoResponse(BaseModel):
     """Response model for model information"""
+
     model_config = ConfigDict(protected_namespaces=())
 
     model_name: str = Field(..., description="Name of the Hugging Face model")
