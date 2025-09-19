@@ -29,6 +29,11 @@ RUN apt-get update && apt-get install -y \
 # Copy installed packages from builder stage
 COPY --from=builder /install /usr/local
 
+# Set environment variables before switching user
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PATH="/usr/local/bin:$PATH"
+
 # Copy application code
 COPY --chown=appuser:appuser ./app ./app
 COPY --chown=appuser:appuser entrypoint.sh .
@@ -37,11 +42,6 @@ COPY --chown=appuser:appuser entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 USER appuser
-
-# Environment variables for Cloud Run
-ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PATH="/usr/local/bin:$PATH"
 
 # Health check for Cloud Run
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
