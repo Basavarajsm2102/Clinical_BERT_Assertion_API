@@ -1,6 +1,3 @@
-# Standard library imports
-from unittest.mock import patch
-
 # Third party imports
 import pytest
 
