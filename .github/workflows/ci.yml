@@ -1,41 +1,184 @@
-name: CI Pipeline
+name: Continuous Integration
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ main, develop ]
   pull_request:
-    branches: [main, develop]
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.12'
 
 jobs:
-  test:
+  lint-and-format:
+    name: Code Quality & Formatting
     runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black==23.10.1 isort==5.12.0 flake8==6.1.0 mypy==1.7.0
+        pip install -r requirements.txt
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --diff app/ tests/
+
+    - name: Check formatting with Black
+      run: |
+        black --check --diff app/ tests/
+
+    - name: Run Flake8 linting
+      run: |
+        flake8 app/ tests/ --max-line-length=88 --extend-ignore=E203,W503,E501
+
+    - name: Run MyPy type checking
+      run: |
+        mypy app/ --ignore-missing-imports
+
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+
     strategy:
       matrix:
         python-version: ['3.11', '3.12']
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
-    - run: |
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
-        python -m black --check app/ tests/
-        python -m isort --check-only app/ tests/
-        flake8 app/ tests/
-        pytest tests/ -v --cov=app --cov-fail-under=80
-    - run: |
+        pip install pytest pytest-asyncio pytest-cov pytest-xvfb httpx
+
+    - name: Run tests with coverage
+      run: |
+        pytest tests/ -v \
+          --cov=app \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-fail-under=80 \
+          --durations=10
+
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit==1.7.5 safety==2.3.4
+        pip install -r requirements.txt
+
+    - name: Run Bandit security linter
+      run: |
+        bandit -r app/ -f json -o bandit-report.json || true
         bandit -r app/
+
+    - name: Run Safety security check
+      run: |
+        safety check --json || true
         safety check
 
-  docker:
+  docker-build:
+    name: Docker Build Test
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, security]
+
     steps:
     - uses: actions/checkout@v4
-    - uses: docker/build-push-action@v5
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
       with:
         context: .
         push: false
         tags: clinical-bert-api:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64
+
+    - name: Test Docker image
+      run: |
+        # Start container in background
+        docker run -d --name test-api -p 8000:8000 clinical-bert-api:test
+
+        # Wait for container to start
+        sleep 45
+
+        # Test health endpoint
+        curl -f http://localhost:8000/health || exit 1
+
+        # Test root endpoint
+        curl -f http://localhost:8000/ || exit 1
+
+        # Stop container
+        docker stop test-api
+
+  format-check:
+    name: Format Consistency Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install formatting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install black==23.10.1 isort==5.12.0
+
+    - name: Check if isort and black agree
+      run: |
+        # Run isort first, then black, then check if files changed
+        isort app/ tests/
+        black app/ tests/
+
+        # Check if any files were modified
+        if git diff --quiet; then
+          echo "✅ Formatting tools agree - no changes needed"
+        else
+          echo "❌ Formatting tools disagree - files were modified"
+          git diff
+          exit 1
+        fi
