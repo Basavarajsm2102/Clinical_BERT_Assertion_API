@@ -29,8 +29,24 @@ jobs:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
     - uses: google-github-actions/setup-gcloud@v2
     - run: |
+        # Configure Docker for GCR
         gcloud auth configure-docker us-central1-docker.pkg.dev
+
+        # Build optimized Docker image
         docker build -t clinical-bert-api .
+
+        # Tag and push to GCR
         docker tag clinical-bert-api us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
         docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
-        gcloud run deploy clinical-bert-api --image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest --region=us-central1 --allow-unauthenticated
+
+        # Deploy to Cloud Run with optimized settings
+        gcloud run deploy clinical-bert-api \
+          --image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest \
+          --region=us-central1 \
+          --allow-unauthenticated \
+          --memory=2Gi \
+          --cpu=1 \
+          --max-instances=10 \
+          --timeout=300 \
+          --concurrency=80 \
+          --port=8080

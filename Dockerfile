@@ -1,50 +1,53 @@
-# Production Dockerfile for Clinical BERT API
-FROM python:3.12-slim
+# Multi-stage Dockerfile for optimized Clinical BERT API
+# Stage 1: Builder - Install dependencies
+FROM python:3.12-slim AS builder
 
-# Environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+WORKDIR /install
 
-WORKDIR /code
-
-# Install system dependencies
+# Install system build dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN adduser --disabled-password --gecos '' --shell /bin/bash appuser \
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
+
+# Stage 2: Runtime - Optimized for Cloud Run
+FROM python:3.12-slim
+
+WORKDIR /code
+
+# Install only runtime system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && adduser --disabled-password --gecos '' --shell /bin/bash appuser \
     && chown -R appuser:appuser /code
 
-USER appuser
-ENV PATH="/home/appuser/.local/bin:${PATH}"
+# Copy installed packages from builder stage
+COPY --from=builder /install /usr/local
 
-# Install Python dependencies
-COPY --chown=appuser:appuser requirements.txt .
-# Install numpy<2 first to avoid compatibility issues
-RUN pip install --user --no-cache-dir 'numpy<2'
-RUN pip install --user --no-cache-dir -r requirements.txt
-
-# Copy application
+# Copy application code
 COPY --chown=appuser:appuser ./app ./app
+COPY --chown=appuser:appuser entrypoint.sh .
 
-# Create entrypoint script
-RUN echo '#!/bin/bash\n\
-PORT=${PORT:-8080}\n\
-echo "Starting server on port $PORT"\n\
-export PATH="/home/appuser/.local/bin:$PATH"\n\
-cd /code\n\
-uvicorn app.main:app --host 0.0.0.0 --port $PORT' > /code/entrypoint.sh && \
-    chmod +x /code/entrypoint.sh && \
-    chown appuser:appuser /code/entrypoint.sh
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
 
-# Health check
+USER appuser
+
+# Environment variables for Cloud Run
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PATH="/usr/local/bin:$PATH"
+
+# Health check for Cloud Run
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 EXPOSE 8080
 
-# Run application
-ENTRYPOINT ["/code/entrypoint.sh"]
+# Use entrypoint script for proper PORT handling
+ENTRYPOINT ["./entrypoint.sh"]
