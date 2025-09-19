@@ -105,9 +105,11 @@ class HealthResponse(BaseModel):
     model_loaded: bool = Field(..., description="Model loaded status")
     timestamp: float = Field(..., description="Check timestamp")
     version: Optional[str] = Field("1.0.0", description="API version")
+    environment: Optional[str] = Field(None, description="Environment")
     uptime_seconds: Optional[float] = Field(None, description="Uptime in seconds")
     total_predictions: Optional[int] = Field(None, description="Total predictions made")
     system_metrics: Optional[Dict[str, Any]] = Field(None, description="System metrics")
+    model_info: Optional[Dict[str, Any]] = Field(None, description="Model information")
 
 
 class MetricsResponse(BaseModel):
