@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers"""
 
-    def __init__(self, app, csp_policy: str | None = None, hsts_max_age: int = 31536000) -> None:
+    def __init__(
+        self, app, csp_policy: str | None = None, hsts_max_age: int = 31536000
+    ) -> None:
         super().__init__(app)
         self.csp_policy = csp_policy
         self.hsts_max_age = hsts_max_age

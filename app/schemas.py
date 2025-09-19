@@ -69,9 +69,7 @@ class PredictionResponse(BaseModel):
 class BatchPredictionRequest(BaseModel):
     """Request model for batch prediction"""
 
-    sentences: List[str] = Field(
-        ..., description="List of sentences"
-    )
+    sentences: List[str] = Field(..., description="List of sentences")
 
     @validator("sentences")
     def validate_sentences(cls, v: List[str]) -> List[str]:
