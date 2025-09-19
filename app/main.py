@@ -108,7 +108,11 @@ app = FastAPI(
 # Add middleware stack
 app.add_middleware(
     SecurityHeadersMiddleware,
-    csp_policy="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net; img-src 'self' https://fastapi.tiangolo.com",
+    csp_policy=(
+        "default-src 'self'; script-src 'self' 'unsafe-inline' "
+        "https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net; "
+        "img-src 'self' https://fastapi.tiangolo.com"
+    ),
 )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"])
@@ -180,10 +184,8 @@ async def predict_assertion(
         MODEL_PREDICTIONS_TOTAL.labels(label=result["label"]).inc()
 
         logger.info(
-            f"Prediction completed {request_id}: "
-            f"final_label={result['label']}, "
-            f"model_label={result['model_label']}, "
-            f"rule={result.get('rule_applied')}, "
+            f"Prediction completed {request_id}: final_label={result['label']}, "
+            f"model_label={result['model_label']}, rule={result.get('rule_applied')}, "
             f"time={prediction_time:.3f}s"
         )
 

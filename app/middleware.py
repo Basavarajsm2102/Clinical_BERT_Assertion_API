@@ -166,7 +166,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             response.headers["X-Response-Time"] = f"{duration:.3f}s"
             return response
 
-        except Exception as e:
+        except Exception:
             self.request_count += 1
             self.error_count += 1
             raise
