@@ -515,15 +515,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
 
-# Application startup event
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Additional startup configuration"""
-    logger.info("📝 Configuring application...")
-
-    # Set up additional monitoring if needed
-    if os.getenv("ENABLE_APM", "false").lower() == "true":
-        logger.info("🔍 APM monitoring enabled")
+# Application startup configuration is handled in lifespan
 
 
 if __name__ == "__main__":
