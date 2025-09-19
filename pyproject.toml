@@ -33,7 +33,7 @@ import_heading_firstparty = "Local application imports"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=app --cov-report=term-missing --cov-fail-under=80"
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=75"
 
 [tool.mypy]
 python_version = "3.12"

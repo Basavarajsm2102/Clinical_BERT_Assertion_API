@@ -32,7 +32,7 @@ from .schemas import (
     PredictionRequest,
     PredictionResponse,
 )
-from .utils import get_system_metrics, sanitize_clinical_text
+from .utils import apply_hybrid_pipeline, get_system_metrics, sanitize_clinical_text
 
 # Configure structured logging
 logging.basicConfig(
@@ -270,7 +270,11 @@ async def predict_assertion(
 
         # Model inference with timing
         with MODEL_INFERENCE_DURATION.time():
-            result = await model.predict(sanitized_sentence)
+            model_result = await model.predict(sanitized_sentence)
+
+        # Apply hybrid pipeline for enhanced classification
+        enhanced_results = apply_hybrid_pipeline([model_result], [sanitized_sentence])
+        result = enhanced_results[0]
 
         prediction_time = time.time() - start_time
         prediction_count += 1
@@ -282,7 +286,8 @@ async def predict_assertion(
         # Log successful prediction
         logger.info(
             f"Prediction completed {request_id}: "
-            f"label={result['label']}, score={result['score']:.4f}, "
+            f"label={result['label']}, model_label={result['model_label']}, "
+            f"rule_applied={result.get('rule_applied')}, score={result['score']:.4f}, "
             f"time={prediction_time:.3f}s"
         )
 
@@ -293,9 +298,9 @@ async def predict_assertion(
 
         return PredictionResponse(
             label=result["label"],
-            model_label=result["label"],
+            model_label=result["model_label"],
             score=result["score"],
-            rule_applied=None,
+            rule_applied=result.get("rule_applied"),
             prediction_time_ms=prediction_time * 1000,
             request_id=request_id,
         )
@@ -354,7 +359,10 @@ async def predict_batch(
 
         # Batch inference
         with MODEL_INFERENCE_DURATION.time():
-            results = await model.predict_batch(sanitized_sentences)
+            model_results = await model.predict_batch(sanitized_sentences)
+
+        # Apply hybrid pipeline for enhanced classification
+        enhanced_results = apply_hybrid_pipeline(model_results, sanitized_sentences)
 
         prediction_time = time.time() - start_time
         prediction_count += len(request.sentences)
@@ -363,35 +371,35 @@ async def predict_batch(
         REQUEST_COUNT.labels(
             method="POST", endpoint="/predict/batch", status="200"
         ).inc()
-        for result in results:
+        for result in enhanced_results:
             MODEL_PREDICTIONS_TOTAL.labels(label=result["label"]).inc()
 
         # Convert to response format
         predictions = [
             PredictionResponse(
                 label=result["label"],
-                model_label=result["label"],
+                model_label=result["model_label"],
                 score=result["score"],
-                rule_applied=None,
-                prediction_time_ms=(prediction_time * 1000) / len(results),
+                rule_applied=result.get("rule_applied"),
+                prediction_time_ms=(prediction_time * 1000) / len(enhanced_results),
                 request_id=request_id,
             )
-            for result in results
+            for result in enhanced_results
         ]
 
         logger.info(
             f"Batch prediction completed {request_id}: "
-            f"batch_size={len(results)}, time={prediction_time:.3f}s"
+            f"batch_size={len(enhanced_results)}, time={prediction_time:.3f}s"
         )
 
         # Background analytics
         background_tasks.add_task(
-            log_batch_analytics, request_id, len(results), prediction_time
+            log_batch_analytics, request_id, len(enhanced_results), prediction_time
         )
 
         return BatchPredictionResponse(
             predictions=predictions,
-            batch_size=len(results),
+            batch_size=len(enhanced_results),
             total_prediction_time_ms=prediction_time * 1000,
             request_id=request_id,
         )

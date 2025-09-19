@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Set test environment variables
-os.environ["ENVIRONMENT"] = "test"
+os.environ["ENVIRONMENT"] = "development"
 os.environ["LOG_LEVEL"] = "ERROR"
 os.environ["REQUIRE_API_KEY"] = "false"
 os.environ["ENABLE_RATE_LIMITING"] = "false"
@@ -58,6 +58,23 @@ def app_with_mock_model(mock_model):
 def client(app_with_mock_model):
     """Create a test client for the FastAPI application"""
     return TestClient(app_with_mock_model)
+
+
+@pytest.fixture
+def auth_client():
+    """Create a test client for auth tests with mocked model"""
+    with patch("app.main.model") as mock_model:
+        mock_model.is_loaded.return_value = True
+        mock_model.get_model_info.return_value = {
+            "model_name": "test-model",
+            "device": "cpu",
+            "loaded": True,
+            "labels": ["PRESENT", "ABSENT", "POSSIBLE"],
+            "cuda_available": False,
+        }
+        from app.main import app
+
+        return TestClient(app)
 
 
 @pytest.fixture
