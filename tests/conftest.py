@@ -29,16 +29,18 @@ def mock_model():
     mock = Mock()
     mock.is_loaded.return_value = True
     mock.predict = AsyncMock(return_value={"label": "ABSENT", "score": 0.9842})
-    mock.predict_batch = AsyncMock(return_value=[
-        {"label": "ABSENT", "score": 0.9842},
-        {"label": "PRESENT", "score": 0.8976}
-    ])
+    mock.predict_batch = AsyncMock(
+        return_value=[
+            {"label": "ABSENT", "score": 0.9842},
+            {"label": "PRESENT", "score": 0.8976},
+        ]
+    )
     mock.get_model_info.return_value = {
         "model_name": "bvanaken/clinical-assertion-negation-bert",
         "device": "cpu",
         "loaded": True,
         "labels": ["PRESENT", "ABSENT", "POSSIBLE"],
-        "cuda_available": False
+        "cuda_available": False,
     }
     return mock
 
@@ -46,8 +48,9 @@ def mock_model():
 @pytest.fixture
 def app_with_mock_model(mock_model):
     """Create FastAPI app with mocked model"""
-    with patch('app.main.model', mock_model):
+    with patch("app.main.model", mock_model):
         from app.main import app
+
         yield app
 
 
@@ -65,8 +68,8 @@ def sample_predictions():
         "batch": [
             {"label": "ABSENT", "score": 0.9842},
             {"label": "PRESENT", "score": 0.8976},
-            {"label": "POSSIBLE", "score": 0.7123}
-        ]
+            {"label": "POSSIBLE", "score": 0.7123},
+        ],
     }
 
 
@@ -77,34 +80,34 @@ def clinical_test_sentences():
         {
             "sentence": "The patient denies chest pain.",
             "expected_label": "ABSENT",
-            "description": "Negation example"
+            "description": "Negation example",
         },
         {
             "sentence": "He has a history of hypertension.",
             "expected_label": "PRESENT",
-            "description": "Present condition"
+            "description": "Present condition",
         },
         {
             "sentence": "If symptoms persist, call doctor.",
             "expected_label": "CONDITIONAL",
-            "description": "Conditional statement"
+            "description": "Conditional statement",
         },
         {
             "sentence": "No signs of pneumonia were observed.",
             "expected_label": "ABSENT",
-            "description": "Absent finding"
-        }
+            "description": "Absent finding",
+        },
     ]
 
 
 @pytest.fixture(autouse=True)
 def mock_system_utils():
     """Mock system utility functions"""
-    with patch('app.utils.get_system_metrics') as mock_metrics:
+    with patch("app.utils.get_system_metrics") as mock_metrics:
         mock_metrics.return_value = {
             "memory_mb": 512.0,
             "memory_percent": 50.0,
             "cpu_percent": 25.0,
-            "disk_percent": 30.0
+            "disk_percent": 30.0,
         }
         yield mock_metrics
