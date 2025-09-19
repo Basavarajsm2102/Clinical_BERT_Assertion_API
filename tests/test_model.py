@@ -1,11 +1,8 @@
 # Standard library imports
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 # Third party imports
 import pytest
-import torch
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from app.model import ClinicalAssertionModel
 

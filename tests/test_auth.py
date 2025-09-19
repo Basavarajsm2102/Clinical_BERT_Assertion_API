@@ -1,9 +1,6 @@
 # Standard library imports
 import os
-from unittest.mock import Mock, patch
-
-# Third party imports
-import pytest
+from unittest.mock import patch
 
 from app.auth import APIKeyAuth
 
@@ -125,9 +122,6 @@ class TestVerifyAPIKey:
         """Test that invalid API key attempts are logged"""
         # Standard library imports
         from unittest.mock import Mock
-
-        # Third party imports
-        from fastapi import Request
 
         from app.auth import verify_api_key
 
