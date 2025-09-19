@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 # Third party imports
 import pytest
 
-# Local application imports
 from app.auth import APIKeyAuth
 
 

@@ -4,7 +4,6 @@ from unittest.mock import Mock, patch
 
 # Third party imports
 import pytest
-
 from fastapi.responses import JSONResponse, Response
 
 from app.middleware import (
