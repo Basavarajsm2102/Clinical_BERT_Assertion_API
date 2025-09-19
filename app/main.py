@@ -10,12 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import Response
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Histogram,
-    generate_latest,
-)
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 from .middleware import (
     MetricsMiddleware,
@@ -32,11 +27,7 @@ from .schemas import (
     PredictionRequest,
     PredictionResponse,
 )
-from .utils import (
-    apply_hybrid_pipeline,
-    get_system_metrics,
-    sanitize_clinical_text,
-)
+from .utils import apply_hybrid_pipeline, get_system_metrics, sanitize_clinical_text
 
 # Configure structured logging
 logging.basicConfig(
