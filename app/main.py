@@ -528,10 +528,11 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 if __name__ == "__main__":
     # Production server configuration
+    port = int(os.getenv("PORT", "8080"))  # Cloud Run default is 8080
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
+        port=port,
         workers=int(os.getenv("WORKERS", 1)),
         log_level=os.getenv("LOG_LEVEL", "info").lower(),
         access_log=True,
