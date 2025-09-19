@@ -4,7 +4,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 # Third party imports
 import uvicorn
@@ -66,7 +66,7 @@ prediction_count = 0
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> None:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Enhanced application lifespan management"""
     global model
 
