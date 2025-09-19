@@ -97,6 +97,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)
 
+    def get_client_id(self, request: Request) -> str:
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        return request.client.host if request.client else "unknown"
+
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
@@ -151,12 +157,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 )
             )
             raise
-
-    def get_client_id(self, request: Request) -> str:
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            return forwarded_for.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
