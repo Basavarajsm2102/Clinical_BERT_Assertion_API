@@ -94,6 +94,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Request logging middleware"""
 
+    def __init__(self, app: ASGIApp) -> None:
+        super().__init__(app)
+
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
