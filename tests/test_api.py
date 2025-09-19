@@ -13,28 +13,25 @@ from app.utils import (
 
 class TestHealthEndpoint:
     def test_health_check_success(self, client, mock_model):
-        with patch("app.main.model", mock_model):
-            response = client.get("/health")
-            assert response.status_code == 200
-            data = response.json()
-            assert data["status"] in ["healthy", "unhealthy"]
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] in ["healthy", "unhealthy"]
 
 
 class TestPredictionEndpoint:
     def test_predict_success(self, client, mock_model):
-        with patch("app.main.model", mock_model):
-            response = client.post(
-                "/predict", json={"sentence": "The patient denies chest pain."}
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert "label" in data
-            assert "score" in data
+        response = client.post(
+            "/predict", json={"sentence": "The patient denies chest pain."}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "label" in data
+        assert "score" in data
 
     def test_predict_empty_sentence(self, client, mock_model):
-        with patch("app.main.model", mock_model):
-            response = client.post("/predict", json={"sentence": ""})
-            assert response.status_code == 422
+        response = client.post("/predict", json={"sentence": ""})
+        assert response.status_code == 422
 
     @pytest.mark.parametrize(
         "sentence",
@@ -45,12 +42,11 @@ class TestPredictionEndpoint:
         ],
     )
     def test_predict_various_sentences(self, client, mock_model, sentence):
-        with patch("app.main.model", mock_model):
-            response = client.post("/predict", json={"sentence": sentence})
-            assert response.status_code == 200
-            data = response.json()
-            assert isinstance(data["score"], float)
-            assert 0.0 <= data["score"] <= 1.0
+        response = client.post("/predict", json={"sentence": sentence})
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data["score"], float)
+        assert 0.0 <= data["score"] <= 1.0
 
 
 class TestBatchPredictionEndpoint:
@@ -60,19 +56,17 @@ class TestBatchPredictionEndpoint:
             {"label": "PRESENT", "score": 0.8976},
         ]
 
-        with patch("app.main.model", mock_model):
-            response = client.post(
-                "/predict/batch",
-                json={"sentences": ["Sentence 1", "Sentence 2"]},
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert len(data["predictions"]) == 2
+        response = client.post(
+            "/predict/batch",
+            json={"sentences": ["Sentence 1", "Sentence 2"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["predictions"]) == 2
 
     def test_batch_predict_empty_list(self, client, mock_model):
-        with patch("app.main.model", mock_model):
-            response = client.post("/predict/batch", json={"sentences": []})
-            assert response.status_code == 422
+        response = client.post("/predict/batch", json={"sentences": []})
+        assert response.status_code == 422
 
 
 class TestRootEndpoint:
@@ -175,16 +169,15 @@ class TestEnhancedPredictionEndpoints:
         # Mock model to return PRESENT for conditional sentence
         mock_model.predict.return_value = {"label": "PRESENT", "score": 0.85}
 
-        with patch("app.main.model", mock_model):
-            response = client.post(
-                "/predict",
-                json={"sentence": "If symptoms persist, call doctor."},
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert data["label"] == "CONDITIONAL"
-            assert data["model_label"] == "PRESENT"
-            assert data["rule_applied"] == "conditional_trigger"
+        response = client.post(
+            "/predict",
+            json={"sentence": "If symptoms persist, call doctor."},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["label"] == "CONDITIONAL"
+        assert data["model_label"] == "PRESENT"
+        assert data["rule_applied"] == "conditional_trigger"
 
     def test_batch_predict_with_hybrid_pipeline(self, client, mock_model):
         """Test that batch prediction applies hybrid rules"""
@@ -193,18 +186,17 @@ class TestEnhancedPredictionEndpoints:
             {"label": "PRESENT", "score": 0.90},  # Will become POSSIBLE
         ]
 
-        with patch("app.main.model", mock_model):
-            response = client.post(
-                "/predict/batch",
-                json={
-                    "sentences": [
-                        "If symptoms persist, call doctor.",
-                        "The patient likely has pneumonia.",
-                    ]
-                },
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert len(data["predictions"]) == 2
-            assert data["predictions"][0]["label"] == "CONDITIONAL"
-            assert data["predictions"][1]["label"] == "POSSIBLE"
+        response = client.post(
+            "/predict/batch",
+            json={
+                "sentences": [
+                    "If symptoms persist, call doctor.",
+                    "The patient likely has pneumonia.",
+                ]
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["predictions"]) == 2
+        assert data["predictions"][0]["label"] == "CONDITIONAL"
+        assert data["predictions"][1]["label"] == "POSSIBLE"
