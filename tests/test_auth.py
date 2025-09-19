@@ -1,13 +1,12 @@
 # Standard library imports
 import os
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 # Third party imports
 import pytest
-from fastapi import HTTPException
-from fastapi.testclient import TestClient
 
-from app.auth import APIKeyAuth, verify_api_key
+# Local application imports
+from app.auth import APIKeyAuth
 
 
 class TestAPIKeyAuth:
@@ -146,7 +145,7 @@ class TestVerifyAPIKey:
             # This should raise an exception and log the invalid attempt
             try:
                 verify_api_key(mock_request, None)
-            except:
+            except Exception:
                 pass
 
             # Verify that warning was logged for invalid key attempt
