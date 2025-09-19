@@ -123,8 +123,8 @@ app = FastAPI(
     """,
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
-    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None,
+    docs_url="/docs",  # Always enable docs for testing
+    redoc_url="/redoc",  # Always enable redoc for testing
 )
 
 # Add middleware stack (order matters!)
@@ -455,7 +455,8 @@ async def root() -> dict:
             "batch_predict": "/predict/batch",
             "model_info": "/model/info",
             "metrics": "/metrics",
-            "docs": "/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+            "docs": "/docs",
+            "redoc": "/redoc",
         },
         "features": [
             "Sub-500ms response time",
