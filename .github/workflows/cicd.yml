@@ -16,16 +16,6 @@ on:
         options:
         - staging
         - production
-      request_production_approval:
-        description: 'Request Production Approval?'
-        required: false
-        default: 'false'
-        type: boolean
-      approvers:
-        description: 'GitHub usernames of approvers (comma-separated)'
-        required: false
-        default: ''
-        type: string
 
 env:
   PYTHON_VERSION: '3.12'
@@ -242,7 +232,7 @@ jobs:
           echo "| Status | ✅ Complete |"
 
   # ═══════════════════════════════════════════════════════════════════════════════════════════════════════
-  # 🎯 DEBUG & APPROVAL GATE
+  # 🎯 DEBUG & TRIGGER ANALYSIS
   # ═══════════════════════════════════════════════════════════════════════════════════════════════════════
   
   debug-trigger:
@@ -251,8 +241,7 @@ jobs:
     needs: docker-build
     
     outputs:
-      should_deploy_prod: ${{ steps.check-approval.outputs.should_deploy }}
-      approvers_needed: ${{ steps.check-approval.outputs.approvers_needed }}
+      deploy_target: ${{ steps.determine-target.outputs.target }}
     
     steps:
       - name: 🔍 Debug trigger conditions
@@ -268,135 +257,35 @@ jobs:
           echo "| Is tag push | ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }} |"
           echo "| Is workflow dispatch | ${{ github.event_name == 'workflow_dispatch' }} |"
           echo "| Environment | ${{ github.event.inputs.environment || 'not set' }} |"
-          echo "| Request Prod Approval | ${{ github.event.inputs.request_production_approval || 'false' }} |"
-          echo "| Approvers | ${{ github.event.inputs.approvers || 'none' }} |"
           echo "| Is PR | ${{ github.event_name == 'pull_request' }} |"
           echo "====================================="
 
-      - name: 🎯 Check Production Deployment Authorization
-        id: check-approval
+      - name: 🎯 Determine deployment target
+        id: determine-target
         run: |
-          echo "=== 🎯 PRODUCTION DEPLOYMENT AUTHORIZATION CHECK ==="
+          echo "=== 🎯 DEPLOYMENT TARGET ANALYSIS ==="
           
-          # Check if this is a tag push (automatic approval)
-          IS_TAG_PUSH=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
-          echo "Is tag push: $IS_TAG_PUSH"
-          
-          # Check if workflow dispatch explicitly requests production
-          IS_DIRECT_PROD_REQUEST=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production' }}
-          echo "Direct prod request: $IS_DIRECT_PROD_REQUEST"
-          
-          # Check if approval was requested via workflow inputs
-          REQUEST_APPROVAL=${{ github.event.inputs.request_production_approval == 'true' }}
-          echo "Approval requested: $REQUEST_APPROVAL"
-          
-          # Determine if production deployment should proceed
-          SHOULD_DEPLOY=false
-          
-          if [ "$IS_TAG_PUSH" = true ]; then
-            echo "✅ Tag push detected - Auto-approved for production"
-            SHOULD_DEPLOY=true
-          elif [ "$IS_DIRECT_PROD_REQUEST" = true ]; then
-            echo "✅ Direct production request - Requires approval"
-            SHOULD_DEPLOY=true
-          elif [ "$REQUEST_APPROVAL" = true ]; then
-            echo "✅ Manual approval requested - Will require team approval"
-            SHOULD_DEPLOY=true
+          # Determine deployment target
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "✅ Regular push to main → STAGING"
+            echo "target=staging" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "✅ Tag push → PRODUCTION"
+            echo "target=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ github.event.inputs.environment }}"
+            echo "✅ Workflow dispatch → $ENV"
+            echo "target=$ENV" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "✅ Pull Request → STAGING"
+            echo "target=staging" >> $GITHUB_OUTPUT
           else
-            echo "ℹ️  No production deployment requested"
-            SHOULD_DEPLOY=false
+            echo "ℹ️  No deployment target"
+            echo "target=none" >> $GITHUB_OUTPUT
           fi
           
-          echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
-          
-          # Check if approvers are specified
-          APPROVERS="${{ github.event.inputs.approvers }}"
-          if [ "$SHOULD_DEPLOY" = true ] && [ "$IS_TAG_PUSH" = false ]; then
-            if [ -n "$APPROVERS" ]; then
-              echo "✅ Approvers specified: $APPROVERS"
-              echo "approvers_needed=true" >> $GITHUB_OUTPUT
-            else
-              echo "⚠️  Production deployment requested but no approvers specified"
-              echo "approvers_needed=true" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "approvers_needed=false" >> $GITHUB_OUTPUT
-          fi
-          
+          echo "Deployment target: ${{ steps.determine-target.outputs.target }}"
           echo "====================================="
-
-  # ═══════════════════════════════════════════════════════════════════════════════════════════════════════
-  # ✅ PRODUCTION APPROVAL GATE
-  # ═══════════════════════════════════════════════════════════════════════════════════════════════════════
-  
-  production-approval:
-    name: ✅ Production Approval Gate
-    runs-on: ubuntu-latest
-    needs: [docker-build, debug-trigger]
-    
-    # Only run if production deployment is needed and not auto-approved
-    if: |
-      needs.debug-trigger.outputs.should_deploy_prod == 'true' &&
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) != true &&
-      needs.debug-trigger.outputs.approvers_needed == 'true'
-    
-    environment: production
-    
-    steps:
-      - name: 📝 Create Approval Request
-        run: |
-          echo "=== ✅ PRODUCTION DEPLOYMENT APPROVAL REQUIRED ==="
-          echo ""
-          echo "🚨 **PRODUCTION DEPLOYMENT PENDING APPROVAL**"
-          echo ""
-          echo "**Pipeline:** ${{ github.workflow }}"
-          echo "**Run ID:** ${{ github.run_id }}"
-          echo "**Image Tag:** ${{ needs.docker-build.outputs.image_tag }}"
-          echo "**Trigger:** ${{ github.event_name }}"
-          echo "**Branch/Tag:** ${{ github.ref_name }}"
-          echo "**Approvers:** ${{ github.event.inputs.approvers }}"
-          echo ""
-          echo "**To approve, click 'Approve' in the GitHub Actions interface**"
-          echo ""
-          echo "⏰ **Approval expires in 24 hours**"
-          echo "======================================"
-
-      - name: ⏳ Wait for Manual Approval
-        uses: trstringer/manual-approval@v1
-        with:
-          secret: ${{ secrets.GITHUB_TOKEN }}
-          approvers: ${{ github.event.inputs.approvers }}
-          minimum-approvals: 1
-          issue-title: "🚀 Production Deployment Approval - ${{ needs.docker-build.outputs.image_tag }}"
-          issue-body: |
-            # Production Deployment Request
-            
-            **Image:** `us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:${{ needs.docker-build.outputs.image_tag }}`
-            **Triggered by:** ${{ github.actor }}
-            **Pipeline:** #${{ github.run_number }}
-            
-            ## Details
-            - **Branch/Tag:** `${{ github.ref_name }}`
-            - **Commit:** `${{ github.sha }}`
-            - **Environment:** Production
-            
-            ## Standardized Resources
-            - **Memory:** `${{ env.DEPLOY_MEMORY }}`
-            - **CPU:** `${{ env.DEPLOY_CPU }}`
-            - **Max Instances:** `${{ env.DEPLOY_MAX_INSTANCES }}`
-            - **Timeout:** `${{ env.DEPLOY_TIMEOUT }}s`
-            - **Concurrency:** `${{ env.DEPLOY_CONCURRENCY }}`
-            
-            ## Review Checklist
-            - [ ] Tests passed (coverage >75%)
-            - [ ] Security scan clean
-            - [ ] Staging deployment verified
-            - [ ] No breaking changes
-            - [ ] Documentation updated
-            
-            **Approvers needed:** ${{ github.event.inputs.approvers }}
-            
-            Click **Approve** to proceed with production deployment.
 
   # ═══════════════════════════════════════════════════════════════════════════════════════════════════════
   # 🚀 STAGING DEPLOYMENT STAGE
@@ -407,11 +296,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [docker-build, debug-trigger]
     
-    # Deploy to staging for regular pushes and workflow dispatch
+    # Deploy to staging for regular pushes, PRs, or workflow dispatch to staging
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging') ||
-      (github.event_name == 'pull_request')
+      needs.debug-trigger.outputs.deploy_target == 'staging'
     
     environment: staging
     
@@ -433,6 +320,7 @@ jobs:
           echo "=== 🚀 STAGING DEPLOYMENT DEBUG ==="
           echo "| Condition | Status |"
           echo "|-----------|--------|"
+          echo "| Target environment | ${{ needs.debug-trigger.outputs.deploy_target }} |"
           echo "| Regular push to main | ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }} |"
           echo "| Workflow dispatch staging | ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' }} |"
           echo "| PR event | ${{ github.event_name == 'pull_request' }} |"
@@ -507,19 +395,11 @@ jobs:
   deploy-production:
     name: 🌟 Deploy to Production
     runs-on: ubuntu-latest
-    needs: [docker-build, debug-trigger, production-approval]
+    needs: [docker-build, debug-trigger]
     
-    # Deploy to production for tags, approved manual requests, or direct production dispatch
+    # Deploy to production for tags or workflow dispatch to production
     if: |
-      (
-        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production') ||
-        (needs.debug-trigger.outputs.should_deploy_prod == 'true' && needs.debug-trigger.outputs.approvers_needed == 'false')
-      ) ||
-      (
-        needs.debug-trigger.outputs.should_deploy_prod == 'true' &&
-        needs.production-approval.result == 'success'
-      )
+      needs.debug-trigger.outputs.deploy_target == 'production'
     
     environment: production
     
@@ -541,11 +421,9 @@ jobs:
           echo "=== 🌟 PRODUCTION DEPLOYMENT DEBUG ==="
           echo "| Condition | Status |"
           echo "|-----------|--------|"
+          echo "| Target environment | ${{ needs.debug-trigger.outputs.deploy_target }} |"
           echo "| Tag push | ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }} |"
           echo "| Direct prod dispatch | ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production' }} |"
-          echo "| Approval requested | ${{ needs.debug-trigger.outputs.should_deploy_prod }} |"
-          echo "| Approvers needed | ${{ needs.debug-trigger.outputs.approvers_needed }} |"
-          echo "| Approval status | ${{ needs.production-approval.result || 'skipped' }} |"
           echo "| Image tag | ${{ needs.docker-build.outputs.image_tag }} |"
           echo "| Tag name | ${{ github.ref_name || 'N/A' }} |"
           echo "======================================"
@@ -618,7 +496,7 @@ jobs:
   notify:
     name: 📊 Pipeline Summary & Notification
     runs-on: ubuntu-latest
-    needs: [lint-and-format, test, security, docker-build, debug-trigger, production-approval, deploy-staging, deploy-production]
+    needs: [lint-and-format, test, security, docker-build, debug-trigger, deploy-staging, deploy-production]
     if: always()
     
     steps:
@@ -634,16 +512,15 @@ jobs:
           echo "| 🛡️ Security | security | ${{ needs.security.result }} |"
           echo "| 🏗️ Build | docker-build | ${{ needs.docker-build.result }} |"
           echo "| 🎯 Debug | debug-trigger | ${{ needs.debug-trigger.result }} |"
-          echo "| ✅ Approval | production-approval | ${{ needs.production-approval.result || 'skipped' }} |"
           echo "| 🚀 Staging | deploy-staging | ${{ needs.deploy-staging.result || 'skipped' }} |"
           echo "| 🌟 Production | deploy-production | ${{ needs.deploy-production.result || 'skipped' }} |"
           echo ""
           echo "| Image Tag | ${{ needs.docker-build.outputs.image_tag || 'N/A' }} |"
           echo "| Trigger | ${{ github.event_name }} |"
           echo "| Branch/Tag | ${{ github.ref_name }} |"
-          echo "| Prod Approval | ${{ needs.debug-trigger.outputs.should_deploy_prod || 'N/A' }} |"
+          echo "| Deploy Target | ${{ needs.debug-trigger.outputs.deploy_target || 'none' }} |"
           echo ""
-          echo "| 🏋️  **Standardized Resources** |"
+          echo "| 🏋️  **Standardized Resources (Both Environments)** |"
           echo "| Memory | ${{ env.DEPLOY_MEMORY }} |"
           echo "| CPU | ${{ env.DEPLOY_CPU }} |"
           echo "| Max Instances | ${{ env.DEPLOY_MAX_INSTANCES }} |"
@@ -668,7 +545,9 @@ jobs:
           # Deployment status
           echo ""
           echo "=== 🚀 DEPLOYMENT STATUS ==="
-          if [[ "${{ needs.deploy-staging.result }}" == "success" ]]; then
+          DEPLOY_TARGET="${{ needs.debug-trigger.outputs.deploy_target }}"
+          
+          if [[ "${{ needs.deploy-staging.result }}" == "success" && "$DEPLOY_TARGET" == "staging" ]]; then
             echo "🚀 STAGING: ✅ Deployed successfully"
             echo "   🏋️  Resources: ${{ env.DEPLOY_MEMORY }} memory, ${{ env.DEPLOY_MAX_INSTANCES }} max instances"
           elif [[ "${{ needs.deploy-staging.result }}" == "skipped" ]]; then
@@ -677,15 +556,12 @@ jobs:
             echo "🚀 STAGING: ❌ Failed"
           fi
           
-          if [[ "${{ needs.deploy-production.result }}" == "success" ]]; then
+          if [[ "${{ needs.deploy-production.result }}" == "success" && "$DEPLOY_TARGET" == "production" ]]; then
             echo "🌟 PRODUCTION: ✅ Deployed successfully"
-            echo "   👥 Approved by: ${{ github.event.inputs.approvers || 'Auto-approved (tag)' }}"
+            echo "   🎯 Trigger: ${{ github.event_name }} (${{ github.ref_name }})"
             echo "   🏋️  Resources: ${{ env.DEPLOY_MEMORY }} memory, ${{ env.DEPLOY_MAX_INSTANCES }} max instances"
           elif [[ "${{ needs.deploy-production.result }}" == "skipped" ]]; then
             echo "🌟 PRODUCTION: ⏭️ Skipped"
-            if [[ "${{ needs.debug-trigger.outputs.should_deploy_prod }}" == "true" ]]; then
-              echo "   ⚠️  Approval pending or failed"
-            fi
           else
             echo "🌟 PRODUCTION: ❌ Failed"
           fi
@@ -704,7 +580,6 @@ jobs:
           echo "| 🛡️ Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🏗️ Docker Build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🚀 Staging Deploy | ${{ needs.deploy-staging.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| ✅ Production Approval | ${{ needs.production-approval.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Coverage:** Check artifacts for detailed reports" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ needs.docker-build.outputs.image_tag || 'N/A' }}\`" >> $GITHUB_STEP_SUMMARY
