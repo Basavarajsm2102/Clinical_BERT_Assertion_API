@@ -24,6 +24,7 @@ jobs:
   lint-and-format:
     name: Code Quality & Formatting
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -60,6 +61,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.11', '3.12']
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -101,16 +103,16 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage-report-${{ github.run_id }}-${{ matrix.python-version }}
           path: coverage.xml
 
   security:
     name: Security Scanning
     runs-on: ubuntu-latest
     needs: lint-and-format
+
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -133,37 +135,33 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bandit-report
+          name: bandit-report-${{ github.run_id }}
           path: bandit-report.json
 
   docker-build:
-    name: Docker Build & Push
+    name: Docker Build
     runs-on: ubuntu-latest
     needs: [test, security]
+
     steps:
       - uses: actions/checkout@v4
-      - uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Configure Docker for GCP
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Build and tag Docker image
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          docker build -t clinical-bert-api .
+          docker tag clinical-bert-api us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG
+          docker tag clinical-bert-api us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Authenticate Docker with GCP
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
 
-      - name: Build & Push Docker image with cache
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:${GITHUB_SHA::7}
-            us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
+      - name: Push Docker image to GCP Artifact Registry
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG
+          docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
 
   deploy-staging:
     name: Deploy to Staging
