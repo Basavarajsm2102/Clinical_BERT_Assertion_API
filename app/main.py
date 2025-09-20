@@ -160,6 +160,29 @@ if os.getenv("ENABLE_RATE_LIMITING", "false").lower() == "true":
     )
 
 
+# Simple status endpoint for CI/CD and basic checks (no authentication required)
+@app.get(
+    "/status",
+    tags=["Health Check"],
+    summary="Basic service status",
+    description="Returns basic service status without model dependency",
+)
+async def service_status() -> dict:
+    """Simple status endpoint for CI/CD and basic health checks"""
+    global app_start_time
+
+    uptime_seconds = time.time() - app_start_time
+
+    return {
+        "status": "running",
+        "timestamp": time.time(),
+        "version": "1.0.0",
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "uptime_seconds": uptime_seconds,
+        "message": "Clinical BERT API is running"
+    }
+
+
 # Health check endpoint (no authentication required)
 @app.get(
     "/health",
@@ -450,6 +473,7 @@ async def root() -> dict:
         "environment": os.getenv("ENVIRONMENT", "development"),
         "status": "healthy" if model and model.is_loaded() else "initializing",
         "endpoints": {
+            "status": "/status",
             "health": "/health",
             "predict": "/predict",
             "batch_predict": "/predict/batch",
