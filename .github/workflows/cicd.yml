@@ -2,10 +2,10 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
     tags: ['v*']
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       environment:
@@ -143,6 +143,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, security]
 
+    # Output the image tag for downstream jobs
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -158,9 +162,22 @@ jobs:
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
           echo "✅ Docker configured for GCP Artifact Registry"
 
+      - name: Set image tag
+        id: tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Use tag name for tagged releases
+            IMAGE_TAG=${GITHUB_REF#refs/tags/}
+          else
+            # Use short SHA for regular commits
+            IMAGE_TAG=${GITHUB_SHA::7}
+          fi
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Setting image tag: $IMAGE_TAG"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+      
       - name: Build and tag Docker image
         run: |
-          IMAGE_TAG=${GITHUB_SHA::7}
           echo "Building Docker image with tag: $IMAGE_TAG"
           docker build -t clinical-bert-api .
           docker tag clinical-bert-api us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG
@@ -169,30 +186,45 @@ jobs:
 
       - name: Push Docker image to GCP Artifact Registry
         run: |
-          IMAGE_TAG=${GITHUB_SHA::7}
           echo "Pushing images to Artifact Registry..."
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
           echo "✅ Images pushed to Artifact Registry"
 
-      # Output the image digest for downstream jobs
-      - name: Get image digest
+  debug-trigger:
+    name: Debug Pipeline Trigger
+    runs-on: ubuntu-latest
+    needs: docker-build
+    
+    steps:
+      - name: Debug trigger conditions
         run: |
-          IMAGE_TAG=${GITHUB_SHA::7}
-          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG)
-          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
-          echo "Image digest: $DIGEST"
-      
-      - name: Output image info
-        run: |
-          echo "Built image: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:${{ env.IMAGE_TAG }}"
-          echo "Digest: ${{ env.IMAGE_DIGEST }}"
+          echo "=== DEBUG: Pipeline Trigger Analysis ==="
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "SHA: ${{ github.sha }}"
+          echo "Is regular push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}"
+          echo "Is tag push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}"
+          echo "Is workflow dispatch: ${{ github.event_name == 'workflow_dispatch' }}"
+          echo "Workflow dispatch environment: ${{ github.event.inputs.environment || 'not set' }}"
+          echo "Is workflow dispatch to staging: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' }}"
+          echo "Is workflow dispatch to production: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production' }}"
+          echo "Is PR: ${{ github.event_name == 'pull_request' }}"
+          echo "Full ref: ${{ github.ref }}"
+          echo "======================================="
 
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: docker-build
-    if: github.ref == 'refs/heads/develop' || github.event.inputs.environment == 'staging'
+    needs: [docker-build, debug-trigger]
+    
+    # Deploy to staging for regular pushes and workflow dispatch
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging') ||
+      (github.event_name == 'pull_request')
+    
     environment: staging
     
     steps:
@@ -206,13 +238,22 @@ jobs:
       
       - uses: google-github-actions/setup-gcloud@v2
       
-      - name: Get image tag from previous job
-        run: echo "IMAGE_TAG=${{ needs.docker-build.outputs.image_tag || github.sha }}" >> $GITHUB_ENV
+      - name: Debug deployment conditions
+        run: |
+          echo "=== STAGING DEPLOYMENT DEBUG ==="
+          echo "Running because:"
+          echo "- Regular push to main: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}"
+          echo "- Workflow dispatch to staging: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' }}"
+          echo "- PR event: ${{ github.event_name == 'pull_request' }}"
+          echo "Current ref: ${{ github.ref }}"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Image tag: ${{ needs.docker-build.outputs.image_tag }}"
+          echo "================================="
       
       - name: Deploy to Cloud Run (Staging)
         run: |
           REGION="us-central1"
-          IMAGE_TAG=${GITHUB_SHA::7}
+          IMAGE_TAG=${{ needs.docker-build.outputs.image_tag }}
           
           echo "Deploying to staging environment..."
           echo "Image: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG"
@@ -229,7 +270,8 @@ jobs:
             --concurrency=80 \
             --port=8080 \
             --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
-            --set-env-vars=ENVIRONMENT=staging,DEBUG=true
+            --set-env-vars=ENVIRONMENT=staging,DEBUG=true \
+            --tag=staging-latest
           
           echo "✅ Staging deployment completed"
           
@@ -242,14 +284,30 @@ jobs:
         run: |
           if [ -n "${{ env.SERVICE_URL }}" ]; then
             echo "Performing health check on $SERVICE_URL/health"
-            curl -f -m 30 "$SERVICE_URL/health" || echo "Health check failed - deployment may still be propagating"
+            for i in {1..5}; do
+              if curl -f -m 30 "$SERVICE_URL/health" 2>/dev/null; then
+                echo "✅ Health check passed on attempt $i"
+                break
+              else
+                echo "Health check failed on attempt $i - retrying..."
+                sleep 10
+              fi
+              if [ $i -eq 5 ]; then
+                echo "⚠️  Health check failed after 5 attempts - deployment may still be propagating"
+              fi
+            done
           fi
 
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: docker-build
-    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
+    needs: [docker-build, debug-trigger]
+    
+    # Deploy to production ONLY for tags or manual production deployment
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    
     environment: production
     
     steps:
@@ -263,13 +321,21 @@ jobs:
       
       - uses: google-github-actions/setup-gcloud@v2
       
-      - name: Get image tag from previous job
-        run: echo "IMAGE_TAG=${{ needs.docker-build.outputs.image_tag || github.sha }}" >> $GITHUB_ENV
+      - name: Debug deployment conditions
+        run: |
+          echo "=== PRODUCTION DEPLOYMENT DEBUG ==="
+          echo "Running because:"
+          echo "- Tag push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}"
+          echo "- Workflow dispatch to production: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production' }}"
+          echo "Current ref: ${{ github.ref }}"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Image tag: ${{ needs.docker-build.outputs.image_tag }}"
+          echo "=================================="
       
       - name: Deploy to Cloud Run (Production)
         run: |
           REGION="us-central1"
-          IMAGE_TAG=${GITHUB_SHA::7}
+          IMAGE_TAG=${{ needs.docker-build.outputs.image_tag }}
           
           echo "Deploying to production environment..."
           echo "Image: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG"
@@ -301,30 +367,64 @@ jobs:
         run: |
           if [ -n "${{ env.SERVICE_URL }}" ]; then
             echo "Performing health check on $SERVICE_URL/health"
-            curl -f -m 30 "$SERVICE_URL/health" || echo "Health check failed - deployment may still be propagating"
+            for i in {1..5}; do
+              if curl -f -m 30 "$SERVICE_URL/health" 2>/dev/null; then
+                echo "✅ Health check passed on attempt $i"
+                break
+              else
+                echo "Health check failed on attempt $i - retrying..."
+                sleep 10
+              fi
+              if [ $i -eq 5 ]; then
+                echo "⚠️  Health check failed after 5 attempts - deployment may still be propagating"
+              fi
+            done
           fi
 
   notify:
     name: Notify Results
     runs-on: ubuntu-latest
-    needs: [deploy-staging, deploy-production]
+    needs: [lint-and-format, test, security, docker-build, deploy-staging, deploy-production]
     if: always()
     
     steps:
-      - name: Summary
+      - name: Pipeline Summary
         run: |
-          echo "=== Pipeline Summary ==="
-          echo "Lint & Format: ${{ needs.lint-and-format.result }}"
-          echo "Tests: ${{ needs.test.result }}"
-          echo "Security: ${{ needs.security.result }}"
-          echo "Docker Build: ${{ needs.docker-build.result }}"
-          echo "Staging Deploy: ${{ needs.deploy-staging.result || 'skipped' }}"
-          echo "Production Deploy: ${{ needs.deploy-production.result || 'skipped' }}"
+          echo "=== PIPELINE SUMMARY ==="
+          echo "| Job | Status |"
+          echo "|-----|--------|"
+          echo "| Lint & Format | ${{ needs.lint-and-format.result }} |"
+          echo "| Tests | ${{ needs.test.result }} |"
+          echo "| Security | ${{ needs.security.result }} |"
+          echo "| Docker Build | ${{ needs.docker-build.result }} |"
+          echo "| Deploy Staging | ${{ needs.deploy-staging.result || 'skipped' }} |"
+          echo "| Deploy Production | ${{ needs.deploy-production.result || 'skipped' }} |"
+          echo "=========================="
           
-          if [ "${{ needs.deploy-staging.result }}" == "success" ]; then
-            echo "✅ Staging deployment successful"
-          fi
-          
-          if [ "${{ needs.deploy-production.result }}" == "success" ]; then
-            echo "✅ Production deployment successful"
+          # Check overall CI success
+          if [[ "${{ needs.lint-and-format.result }}" == "success" && 
+                "${{ needs.test.result }}" == "success" && 
+                "${{ needs.security.result }}" == "success" && 
+                "${{ needs.docker-build.result }}" == "success" ]]; then
+            echo "✅ CI pipeline completed successfully"
+            
+            # Check deployment status
+            if [[ "${{ needs.deploy-staging.result }}" == "success" ]]; then
+              echo "✅ Staging deployment successful"
+            elif [[ "${{ needs.deploy-staging.result }}" == "skipped" ]]; then
+              echo "ℹ️  Staging deployment skipped"
+            else
+              echo "❌ Staging deployment failed"
+            fi
+            
+            if [[ "${{ needs.deploy-production.result }}" == "success" ]]; then
+              echo "✅ Production deployment successful"
+            elif [[ "${{ needs.deploy-production.result }}" == "skipped" ]]; then
+              echo "ℹ️  Production deployment skipped"
+            else
+              echo "❌ Production deployment failed"
+            fi
+          else
+            echo "❌ CI pipeline failed"
+            exit 1
           fi
