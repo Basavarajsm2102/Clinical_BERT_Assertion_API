@@ -1,0 +1,145 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches: [ develop ]
+    tags:
+      - 'v*'  # Any tag starting with "v" triggers production deploy
+  pull_request:
+    branches: [ develop, main ]
+  workflow_dispatch:  # optional manual trigger
+    inputs:
+      environment:
+        description: 'Select environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      deploy:
+        description: 'Trigger deployment?'
+        required: true
+        default: false
+        type: boolean
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  SERVICE_NAME: clinical-bert-api
+  PYTHON_VERSION: "3.11"
+
+# -----------------------------
+# 1. CI: Lint, Test, Security
+# -----------------------------
+jobs:
+  lint-test-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run flake8 (lint)
+        run: flake8 . --max-line-length=100
+      - name: Run pytest with coverage
+        run: pytest --cov=app --cov-report=xml --cov-report=term-missing
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+      - name: Security scan Bandit
+        run: bandit -r app -f json -o bandit-report.json
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+      - name: Dependency vulnerability check
+        run: safety check -r requirements.txt --full-report > safety-report.txt
+      - name: Upload Safety report
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-report
+          path: safety-report.txt
+      - name: Annotate pytest failures
+        uses: pytest-github-actions-annotate-failures@v2
+
+# -----------------------------
+# 2. Build & Push Docker
+# -----------------------------
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: lint-test-security
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Build & Push Docker image
+        run: |
+          IMAGE="clinical-bert-api"
+          IMAGE_TAG=${GITHUB_SHA::7}
+          docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/clinical-bert-repo/$IMAGE:$IMAGE_TAG .
+          docker tag $REGION-docker.pkg.dev/$PROJECT_ID/clinical-bert-repo/$IMAGE:$IMAGE_TAG \
+                     $REGION-docker.pkg.dev/$PROJECT_ID/clinical-bert-repo/$IMAGE:latest
+          docker push $REGION-docker.pkg.dev/$PROJECT_ID/clinical-bert-repo/$IMAGE:$IMAGE_TAG
+          docker push $REGION-docker.pkg.dev/$PROJECT_ID/clinical-bert-repo/$IMAGE:latest
+      - name: Export IMAGE_TAG
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+# -----------------------------
+# 3. Staging Deployment (Auto on develop)
+# -----------------------------
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - name: Authenticate GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Deploy to Cloud Run (Staging)
+        run: |
+          gcloud run deploy $SERVICE_NAME-staging \
+            --image $REGION-docker.pkg.dev/$PROJECT_ID/clinical-bert-repo/$SERVICE_NAME:${{ env.IMAGE_TAG }} \
+            --region $REGION \
+            --memory 2Gi \
+            --cpu 2 \
+            --max-instances 10 \
+            --allow-unauthenticated
+
+# -----------------------------
+# 4. Production Deployment (Auto on tag, manual approval)
+# -----------------------------
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: production
+      url: https://$SERVICE_NAME-$REGION.a.run.app
+    steps:
+      - name: Authenticate GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Deploy to Cloud Run (Production)
+        run: |
+          gcloud run deploy $SERVICE_NAME \
+            --image $REGION-docker.pkg.dev/$PROJECT_ID/clinical-bert-repo/$SERVICE_NAME:${{ env.IMAGE_TAG }} \
+            --region $REGION \
+            --memory 4Gi \
+            --cpu 4 \
+            --max-instances 20 \
+            --allow-unauthenticated

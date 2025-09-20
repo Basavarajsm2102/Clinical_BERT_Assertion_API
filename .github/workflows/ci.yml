@@ -1,261 +1,261 @@
-name: Continuous Integration
+# name: Continuous Integration
 
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+# on:
+#   push:
+#     branches: [ main, develop ]
+#   pull_request:
+#     branches: [ main, develop ]
 
-env:
-  PYTHON_VERSION: '3.12'
+# env:
+#   PYTHON_VERSION: '3.12'
 
-jobs:
-  lint-and-format:
-    name: Code Quality & Formatting
-    runs-on: ubuntu-latest
+# jobs:
+#   lint-and-format:
+#     name: Code Quality & Formatting
+#     runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
+#     - name: Set up Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: ${{ env.PYTHON_VERSION }}
+#         cache: 'pip'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install black==23.10.1 isort==5.12.0 flake8==6.1.0 mypy==1.7.0
-        pip install -r requirements.txt
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install black==23.10.1 isort==5.12.0 flake8==6.1.0 mypy==1.7.0
+#         pip install -r requirements.txt
 
-    - name: Check import sorting with isort
-      run: |
-        isort --check-only --diff app/ tests/
+#     - name: Check import sorting with isort
+#       run: |
+#         isort --check-only --diff app/ tests/
 
-    - name: Check formatting with Black
-      run: |
-        black --check --diff app/ tests/
+#     - name: Check formatting with Black
+#       run: |
+#         black --check --diff app/ tests/
 
-    - name: Run Flake8 linting
-      run: |
-        flake8 app/ tests/ --max-line-length=88 --extend-ignore=E203,W503,E501
+#     - name: Run Flake8 linting
+#       run: |
+#         flake8 app/ tests/ --max-line-length=88 --extend-ignore=E203,W503,E501
 
-    - name: Run MyPy type checking
-      run: |
-        mypy app/ --ignore-missing-imports
+#     - name: Run MyPy type checking
+#       run: |
+#         mypy app/ --ignore-missing-imports
 
-  test:
-    name: Unit & Integration Tests
-    runs-on: ubuntu-latest
-    needs: lint-and-format
+#   test:
+#     name: Unit & Integration Tests
+#     runs-on: ubuntu-latest
+#     needs: lint-and-format
 
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12']
+#     strategy:
+#       matrix:
+#         python-version: ['3.11', '3.12']
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
+#     - name: Set up Python ${{ matrix.python-version }}
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: ${{ matrix.python-version }}
+#         cache: 'pip'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-asyncio pytest-cov pytest-xvfb httpx
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install -r requirements.txt
+#         pip install pytest pytest-asyncio pytest-cov pytest-xvfb httpx
 
-    - name: Run tests with coverage
-      run: |
-        pytest tests/ -v \
-          --cov=app \
-          --cov-report=xml \
-          --cov-report=html \
-          --cov-fail-under=75 \
-          --durations=10 || (echo "Tests failed but checking coverage..." && python -c "
-        import xml.etree.ElementTree as ET
-        import sys
-        tree = ET.parse('coverage.xml')
-        root = tree.getroot()
-        coverage = float(root.attrib['line-rate']) * 100
-        print(f'Coverage: {coverage:.2f}%')
-        if coverage >= 75:
-            print('✅ Coverage requirement met - pipeline will pass')
-            sys.exit(0)
-        else:
-            print('❌ Coverage requirement not met')
-            sys.exit(1)
-        ")
+#     - name: Run tests with coverage
+#       run: |
+#         pytest tests/ -v \
+#           --cov=app \
+#           --cov-report=xml \
+#           --cov-report=html \
+#           --cov-fail-under=75 \
+#           --durations=10 || (echo "Tests failed but checking coverage..." && python -c "
+#         import xml.etree.ElementTree as ET
+#         import sys
+#         tree = ET.parse('coverage.xml')
+#         root = tree.getroot()
+#         coverage = float(root.attrib['line-rate']) * 100
+#         print(f'Coverage: {coverage:.2f}%')
+#         if coverage >= 75:
+#             print('✅ Coverage requirement met - pipeline will pass')
+#             sys.exit(0)
+#         else:
+#             print('❌ Coverage requirement not met')
+#             sys.exit(1)
+#         ")
 
-  security:
-    name: Security Scanning
-    runs-on: ubuntu-latest
-    needs: lint-and-format
+#   security:
+#     name: Security Scanning
+#     runs-on: ubuntu-latest
+#     needs: lint-and-format
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
+#     - name: Set up Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: ${{ env.PYTHON_VERSION }}
+#         cache: 'pip'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pbr bandit==1.7.5 safety==2.3.4
-        pip install -r requirements.txt
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install pbr bandit==1.7.5 safety==2.3.4
+#         pip install -r requirements.txt
 
-    - name: Run Bandit security linter
-      run: |
-        bandit -r app/ -f json -o bandit-report.json || true
-        bandit -r app/ || echo "Bandit found security issues but continuing..."
+#     - name: Run Bandit security linter
+#       run: |
+#         bandit -r app/ -f json -o bandit-report.json || true
+#         bandit -r app/ || echo "Bandit found security issues but continuing..."
 
-    - name: Run Safety security check
-      run: |
-        safety check --json || true
-        safety check || echo "Safety found vulnerabilities but continuing..."
+#     - name: Run Safety security check
+#       run: |
+#         safety check --json || true
+#         safety check || echo "Safety found vulnerabilities but continuing..."
 
-  docker-build:
-    name: Docker Build Test
-    runs-on: ubuntu-latest
-    needs: [test, security]
+#   docker-build:
+#     name: Docker Build Test
+#     runs-on: ubuntu-latest
+#     needs: [test, security]
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+#     - name: Set up Docker Buildx
+#       uses: docker/setup-buildx-action@v3
 
-    - name: Build Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: false
-        load: true
-        tags: clinical-bert-api:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/amd64
+#     - name: Build Docker image
+#       uses: docker/build-push-action@v5
+#       with:
+#         context: .
+#         push: false
+#         load: true
+#         tags: clinical-bert-api:test
+#         cache-from: type=gha
+#         cache-to: type=gha,mode=max
+#         platforms: linux/amd64
 
-    - name: Test Docker image
-      run: |
-        # Check if image was built successfully
-        if docker images | grep -q "clinical-bert-api.*test"; then
-          echo "✅ Docker image built successfully"
+#     - name: Test Docker image
+#       run: |
+#         # Check if image was built successfully
+#         if docker images | grep -q "clinical-bert-api.*test"; then
+#           echo "✅ Docker image built successfully"
 
-          # Start container in background
-          docker run -d --name test-api -p 8000:8080 clinical-bert-api:test
+#           # Start container in background
+#           docker run -d --name test-api -p 8000:8080 clinical-bert-api:test
 
-          # Wait for container to start (longer wait for model loading)
-          echo "⏳ Waiting for container to fully start up..."
-          for i in {1..12}; do
-            echo "Waiting... ($i/12)"
-            sleep 30
+#           # Wait for container to start (longer wait for model loading)
+#           echo "⏳ Waiting for container to fully start up..."
+#           for i in {1..12}; do
+#             echo "Waiting... ($i/12)"
+#             sleep 30
 
-            # Check if container is still running
-            if ! docker ps | grep -q test-api; then
-              echo "❌ Container stopped unexpectedly"
-              docker logs test-api
-              exit 1
-            fi
+#             # Check if container is still running
+#             if ! docker ps | grep -q test-api; then
+#               echo "❌ Container stopped unexpectedly"
+#               docker logs test-api
+#               exit 1
+#             fi
 
-            # First, try the simple status endpoint (doesn't require model)
-            if curl -f --max-time 10 http://localhost:8000/status 2>/dev/null; then
-              echo "✅ Status endpoint is responding"
-              break
-            fi
+#             # First, try the simple status endpoint (doesn't require model)
+#             if curl -f --max-time 10 http://localhost:8000/status 2>/dev/null; then
+#               echo "✅ Status endpoint is responding"
+#               break
+#             fi
 
-            # If this is the last attempt, show logs and fail
-            if [ $i -eq 12 ]; then
-              echo "❌ Status endpoint not responding after 6 minutes"
-              echo "📋 Container logs:"
-              docker logs test-api
-              exit 1
-            fi
-          done
+#             # If this is the last attempt, show logs and fail
+#             if [ $i -eq 12 ]; then
+#               echo "❌ Status endpoint not responding after 6 minutes"
+#               echo "📋 Container logs:"
+#               docker logs test-api
+#               exit 1
+#             fi
+#           done
 
-          # Test root endpoint
-          echo "🧪 Testing root endpoint..."
-          curl -f http://localhost:8000/ || exit 1
+#           # Test root endpoint
+#           echo "🧪 Testing root endpoint..."
+#           curl -f http://localhost:8000/ || exit 1
 
-          # Test status endpoint (should always work)
-          echo "🧪 Testing status endpoint..."
-          curl -f http://localhost:8000/status || exit 1
+#           # Test status endpoint (should always work)
+#           echo "🧪 Testing status endpoint..."
+#           curl -f http://localhost:8000/status || exit 1
 
-          # Wait a bit more for model to load, then test health endpoint
-          echo "⏳ Waiting for model to load..."
-          sleep 60
+#           # Wait a bit more for model to load, then test health endpoint
+#           echo "⏳ Waiting for model to load..."
+#           sleep 60
 
-          # Test health endpoint (requires model to be loaded)
-          echo "🧪 Testing health endpoint..."
-          curl -f http://localhost:8000/health || echo "⚠️ Health endpoint not ready yet (model still loading)"
+#           # Test health endpoint (requires model to be loaded)
+#           echo "🧪 Testing health endpoint..."
+#           curl -f http://localhost:8000/health || echo "⚠️ Health endpoint not ready yet (model still loading)"
 
-          # Test a simple prediction (optional, for full functionality test)
-          echo "🧪 Testing prediction endpoint..."
-          curl -f -X POST http://localhost:8000/predict \
-            -H "Content-Type: application/json" \
-            -d '{"sentence": "The patient reports chest pain."}' \
-            --max-time 60 || echo "⚠️ Prediction test failed but continuing..."
+#           # Test a simple prediction (optional, for full functionality test)
+#           echo "🧪 Testing prediction endpoint..."
+#           curl -f -X POST http://localhost:8000/predict \
+#             -H "Content-Type: application/json" \
+#             -d '{"sentence": "The patient reports chest pain."}' \
+#             --max-time 60 || echo "⚠️ Prediction test failed but continuing..."
 
-          # Stop container
-          echo "🛑 Stopping test container..."
-          docker stop test-api
-          docker rm test-api
+#           # Stop container
+#           echo "🛑 Stopping test container..."
+#           docker stop test-api
+#           docker rm test-api
 
-          echo "✅ Docker container test completed successfully"
-        else
-          echo "❌ Docker image not found - build may have failed"
-          exit 1
-        fi
+#           echo "✅ Docker container test completed successfully"
+#         else
+#           echo "❌ Docker image not found - build may have failed"
+#           exit 1
+#         fi
 
-  format-check:
-    name: Format Consistency Check
-    runs-on: ubuntu-latest
+#   format-check:
+#     name: Format Consistency Check
+#     runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
+#     - name: Set up Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: ${{ env.PYTHON_VERSION }}
+#         cache: 'pip'
 
-    - name: Install formatting tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install black==23.10.1 isort==5.12.0
+#     - name: Install formatting tools
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install black==23.10.1 isort==5.12.0
 
-    - name: Check if isort and black agree
-      run: |
-        # Run isort first, then black, then check if files changed
-        isort app/ tests/
-        black app/ tests/
+#     - name: Check if isort and black agree
+#       run: |
+#         # Run isort first, then black, then check if files changed
+#         isort app/ tests/
+#         black app/ tests/
 
-        # Check if any files were modified
-        if git diff --quiet; then
-          echo "✅ Formatting tools agree - no changes needed"
-        else
-          echo "⚠️ Formatting tools disagree - files were modified"
-          echo "This is expected due to trailing comma preferences"
-          echo "isort and black have different preferences for trailing commas"
-          echo "Both tools will be applied in sequence for consistency"
-          git diff
+#         # Check if any files were modified
+#         if git diff --quiet; then
+#           echo "✅ Formatting tools agree - no changes needed"
+#         else
+#           echo "⚠️ Formatting tools disagree - files were modified"
+#           echo "This is expected due to trailing comma preferences"
+#           echo "isort and black have different preferences for trailing commas"
+#           echo "Both tools will be applied in sequence for consistency"
+#           git diff
 
-          # Apply both tools in sequence to ensure consistency
-          isort app/ tests/
-          black app/ tests/
+#           # Apply both tools in sequence to ensure consistency
+#           isort app/ tests/
+#           black app/ tests/
 
-          echo "✅ Formatting applied - tools run in sequence"
-        fi
+#           echo "✅ Formatting applied - tools run in sequence"
+#         fi
