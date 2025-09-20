@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-'''Production health check script for Clinical BERT API'''
+"""Production health check script for Clinical BERT API"""
 
+# Standard library imports
 import asyncio
-import httpx
+import json
 import sys
 import time
-import json
-from typing import Dict, Any
+from typing import Any, Dict
+
+# Third party imports
+import httpx
+
 
 async def comprehensive_health_check(base_url: str) -> Dict[str, Any]:
-    '''Perform comprehensive health check'''
+    """Perform comprehensive health check"""
 
     async with httpx.AsyncClient(timeout=30) as client:
         results = {"overall_status": "unknown", "checks": {}}
@@ -19,21 +23,25 @@ async def comprehensive_health_check(base_url: str) -> Dict[str, Any]:
             response = await client.get(f"{base_url}/health")
             results["checks"]["health"] = {
                 "status": "healthy" if response.status_code == 200 else "unhealthy",
-                "response_time_ms": response.elapsed.total_seconds() * 1000
+                "response_time_ms": response.elapsed.total_seconds() * 1000,
             }
 
             # Test prediction endpoint
             test_response = await client.post(
                 f"{base_url}/predict",
-                json={"sentence": "The patient denies chest pain."}
+                json={"sentence": "The patient denies chest pain."},
             )
             results["checks"]["prediction"] = {
-                "status": "healthy" if test_response.status_code == 200 else "unhealthy",
-                "response_time_ms": test_response.elapsed.total_seconds() * 1000
+                "status": "healthy"
+                if test_response.status_code == 200
+                else "unhealthy",
+                "response_time_ms": test_response.elapsed.total_seconds() * 1000,
             }
 
             # Determine overall status
-            all_healthy = all(check.get("status") == "healthy" for check in results["checks"].values())
+            all_healthy = all(
+                check.get("status") == "healthy" for check in results["checks"].values()
+            )
             results["overall_status"] = "healthy" if all_healthy else "unhealthy"
 
         except Exception as e:
@@ -42,7 +50,9 @@ async def comprehensive_health_check(base_url: str) -> Dict[str, Any]:
 
         return results
 
+
 async def main():
+    # Standard library imports
     import argparse
 
     parser = argparse.ArgumentParser(description="Clinical BERT API Health Check")
@@ -71,6 +81,7 @@ async def main():
     # Exit with error code if unhealthy
     if results["overall_status"] != "healthy":
         sys.exit(1)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
