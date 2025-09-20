@@ -202,10 +202,11 @@ jobs:
     steps:
       - name: Show pipeline context
         run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "=== PIPELINE CONTEXT ==="
           echo "| Event: ${{ github.event_name }} |"
           echo "| Ref: ${{ github.ref_name }} |"
-          echo "| SHA: ${{ github.sha::7 }} |"
+          echo "| SHA: $SHORT_SHA |"
           echo "| Tag: ${{ needs.build.outputs.image_tag }} |"
           echo "| Is Tag: ${{ needs.build.outputs.is_tag }} |"
           echo "| Manual Env: ${{ github.event.inputs.environment || 'auto' }} |"
@@ -270,18 +271,19 @@ jobs:
     steps:
       - name: Generate dashboard
         run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "=== 🎯 CI/CD DASHBOARD ==="
           echo ""
           echo "┌─────────────────┬──────────────┬──────────────┐"
-          echo "│     STAGE       │    STATUS    │   DURATION   │"
+          echo "│     STAGE       │    STATUS    │   COMMIT     │"
           echo "├─────────────────┼──────────────┼──────────────┤"
-          echo "│ 🔍 Code Quality │ ${{ needs.lint.result }} │"
-          echo "│ 🧪 Tests        │ ${{ needs.test.result }} │"
-          echo "│ 🛡️ Security     │ ${{ needs.security.result }} │"
-          echo "│ 🐳 Build        │ ${{ needs.build.result }} │"
+          echo "│ 🔍 Code Quality │ ${{ needs.lint.result }} │ $SHORT_SHA │"
+          echo "│ 🧪 Tests        │ ${{ needs.test.result }} │ $SHORT_SHA │"
+          echo "│ 🛡️ Security     │ ${{ needs.security.result }} │ $SHORT_SHA │"
+          echo "│ 🐳 Build        │ ${{ needs.build.result }} │ $SHORT_SHA │"
           echo "├─────────────────┼──────────────┼──────────────┤"
-          echo "│ 🚀 Staging      │ ${{ needs.deploy-staging.result }} │"
-          echo "│ 🎯 Production   │ ${{ needs.deploy-production.result || 'skipped' }} │"
+          echo "│ 🚀 Staging      │ ${{ needs.deploy-staging.result }} │ ${{ needs.build.outputs.image_tag }} │"
+          echo "│ 🎯 Production   │ ${{ needs.deploy-production.result || 'skipped' }} │ ${{ needs.build.outputs.image_tag }} │"
           echo "└─────────────────┴──────────────┴──────────────┘"
           echo ""
           
