@@ -2,9 +2,11 @@ name: CI-CD Pipeline
 
 on:
   push:
-    branches: [ develop ]
+    branches:
+      - develop   # Staging auto-deploy
+      - main      # CI + optional manual prod deploy
     tags:
-      - 'v*'  # Any tag starting with "v" triggers production deploy
+      - 'v*'      # Production auto-deploy on version tags
   pull_request:
     branches: [ develop, main ]
   workflow_dispatch:
