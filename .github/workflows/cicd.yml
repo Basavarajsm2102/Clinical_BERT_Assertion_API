@@ -344,7 +344,7 @@ jobs:
           echo "| Concurrency | ${{ env.DEPLOY_CONCURRENCY }} |"
           echo "================================"
           
-          # Deploy with standardized resources and 100% traffic to new revision
+          # Deploy with standardized resources - traffic automatically routes to latest revision
           gcloud run deploy clinical-bert-api-staging \
             --image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG \
             --region=$REGION \
@@ -357,8 +357,7 @@ jobs:
             --port=${{ env.DEPLOY_PORT }} \
             --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
             --set-env-vars=ENVIRONMENT=staging,DEBUG=true \
-            --tag=staging-latest \
-            --update-traffic=latest
+            --tag=staging-latest
           
           echo "✅ STAGING DEPLOYMENT COMPLETED"
 
@@ -445,7 +444,7 @@ jobs:
           echo "| Concurrency | ${{ env.DEPLOY_CONCURRENCY }} |"
           echo "=================================="
           
-          # Deploy with standardized resources (same as staging) and 100% traffic to new revision
+          # Deploy with standardized resources - traffic automatically routes to latest revision
           gcloud run deploy clinical-bert-api \
             --image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG \
             --region=$REGION \
@@ -458,8 +457,7 @@ jobs:
             --port=${{ env.DEPLOY_PORT }} \
             --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
             --set-env-vars=ENVIRONMENT=production,DEBUG=false \
-            --tag=latest \
-            --update-traffic=latest
+            --tag=latest
           
           echo "✅ PRODUCTION DEPLOYMENT COMPLETED"
 
@@ -526,6 +524,7 @@ jobs:
           echo "| Max Instances | ${{ env.DEPLOY_MAX_INSTANCES }} |"
           echo "| Timeout | ${{ env.DEPLOY_TIMEOUT }}s |"
           echo "| Concurrency | ${{ env.DEPLOY_CONCURRENCY }} |"
+          echo "| Port | ${{ env.DEPLOY_PORT }} |"
           echo "======================================"
           
           # Overall status
@@ -550,8 +549,9 @@ jobs:
           if [[ "${{ needs.deploy-staging.result }}" == "success" && "$DEPLOY_TARGET" == "staging" ]]; then
             echo "🚀 STAGING: ✅ Deployed successfully"
             echo "   🏋️  Resources: ${{ env.DEPLOY_MEMORY }} memory, ${{ env.DEPLOY_MAX_INSTANCES }} max instances"
+            echo "   📡 URL: ${{ env.SERVICE_URL || 'Check deployment logs' }}"
           elif [[ "${{ needs.deploy-staging.result }}" == "skipped" ]]; then
-            echo "🚀 STAGING: ⏭️ Skipped"
+            echo "🚀 STAGING: ⏭️ Skipped (target: $DEPLOY_TARGET)"
           else
             echo "🚀 STAGING: ❌ Failed"
           fi
@@ -560,8 +560,9 @@ jobs:
             echo "🌟 PRODUCTION: ✅ Deployed successfully"
             echo "   🎯 Trigger: ${{ github.event_name }} (${{ github.ref_name }})"
             echo "   🏋️  Resources: ${{ env.DEPLOY_MEMORY }} memory, ${{ env.DEPLOY_MAX_INSTANCES }} max instances"
+            echo "   📡 URL: ${{ env.SERVICE_URL || 'Check deployment logs' }}"
           elif [[ "${{ needs.deploy-production.result }}" == "skipped" ]]; then
-            echo "🌟 PRODUCTION: ⏭️ Skipped"
+            echo "🌟 PRODUCTION: ⏭️ Skipped (target: $DEPLOY_TARGET)"
           else
             echo "🌟 PRODUCTION: ❌ Failed"
           fi
@@ -580,6 +581,7 @@ jobs:
           echo "| 🛡️ Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🏗️ Docker Build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🚀 Staging Deploy | ${{ needs.deploy-staging.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌟 Production Deploy | ${{ needs.deploy-production.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Coverage:** Check artifacts for detailed reports" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ needs.docker-build.outputs.image_tag || 'N/A' }}\`" >> $GITHUB_STEP_SUMMARY
@@ -590,3 +592,4 @@ jobs:
           echo "- Max Instances: `${{ env.DEPLOY_MAX_INSTANCES }}`" >> $GITHUB_STEP_SUMMARY
           echo "- Timeout: `${{ env.DEPLOY_TIMEOUT }}`s" >> $GITHUB_STEP_SUMMARY
           echo "- Concurrency: `${{ env.DEPLOY_CONCURRENCY }}`" >> $GITHUB_STEP_SUMMARY
+          echo "- Port: `${{ env.DEPLOY_PORT }}`" >> $GITHUB_STEP_SUMMARY
