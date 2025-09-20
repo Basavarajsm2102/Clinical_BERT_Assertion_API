@@ -154,7 +154,7 @@ jobs:
           echo "✅ Docker image built successfully"
 
           # Start container in background
-          docker run -d --name test-api -p 8000:8000 clinical-bert-api:test
+          docker run -d --name test-api -p 8000:8080 clinical-bert-api:test
 
           # Wait for container to start (longer wait for model loading)
           echo "⏳ Waiting for container to fully start up..."
