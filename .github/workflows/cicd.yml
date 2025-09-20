@@ -14,8 +14,8 @@ on:
         default: 'staging'
         type: choice
         options:
-          - staging
-          - production
+        - staging
+        - production
 
 env:
   PYTHON_VERSION: '3.12'
@@ -101,10 +101,9 @@ jobs:
               sys.exit(1)
           ")
 
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ matrix.python-version }}-${{ github.run_id }}
+          name: coverage-report-${{ github.run_id }}-${{ matrix.python-version }}
           path: coverage.xml
 
   security:
@@ -136,7 +135,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bandit-report
+          name: bandit-report-${{ github.run_id }}
           path: bandit-report.json
 
   docker-build:
@@ -148,6 +147,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
+      - name: Authenticate GCP and configure Docker
+        run: |
+          printf '%s' "${{ secrets.GCP_SA_KEY }}" > gcloud-key.json
+          gcloud auth activate-service-account --key-file=gcloud-key.json
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
       - name: Build and tag Docker image
         run: |
           IMAGE_TAG=${GITHUB_SHA::7}
@@ -157,9 +162,7 @@ jobs:
 
       - name: Push Docker image to GCP Artifact Registry
         run: |
-          echo "${{ secrets.GCP_SA_KEY }}" > gcloud-key.json
-          gcloud auth activate-service-account --key-file=gcloud-key.json
-          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          IMAGE_TAG=${GITHUB_SHA::7}
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
 
