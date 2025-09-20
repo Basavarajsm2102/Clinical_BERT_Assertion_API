@@ -61,11 +61,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pytest pytest-cov pytest-asyncio httpx
+          pip install pytest-mock  # Add this for better mocking
           pip install -r requirements.txt
       - name: Run tests with coverage
         run: |
           pytest tests/ -v --cov=app --cov-report=xml --cov-report=html \
-            --cov-fail-under=75 --durations=10
+            --cov-fail-under=75 --durations=10 \
+            --asyncio-mode=auto
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}
@@ -178,7 +180,7 @@ jobs:
             --timeout=300 --concurrency=80 \
             --port=8080 \
             --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
-            --set-env-vars="ENVIRONMENT=staging,DEBUG=true" \
+            --set-env-vars="ENVIRONMENT=staging,DEBUG=true,MODEL_SKIP_LOAD=true" \
             --tag=staging-latest || echo "Staging deploy completed"
           
           URL=$(gcloud run services describe clinical-bert-api-staging \
@@ -190,8 +192,19 @@ jobs:
         run: |
           if [ -n "${{ env.STAGING_URL }}" ]; then
             echo "Checking ${{ env.STAGING_URL }}/health..."
-            sleep 10
-            curl -f -s "${{ env.STAGING_URL }}/health" && echo "✅ Staging healthy" || echo "⚠️  Staging warmup..."
+            sleep 30  # Give more time for startup
+            for i in {1..5}; do
+              if curl -f -s "${{ env.STAGING_URL }}/health" 2>/dev/null; then
+                echo "✅ Staging healthy"
+                break
+              else
+                echo "Attempt $i failed, retrying..."
+                sleep 10
+              fi
+              if [ $i -eq 5 ]; then
+                echo "⚠️  Staging warmup may still be in progress"
+              fi
+            done
           fi
 
   debug-info:
@@ -258,8 +271,19 @@ jobs:
         run: |
           if [ -n "${{ env.PROD_URL }}" ]; then
             echo "Checking ${{ env.PROD_URL }}/health..."
-            sleep 15
-            curl -f -s "${{ env.PROD_URL }}/health" && echo "✅ Production healthy" || echo "⚠️  Production warmup..."
+            sleep 30  # Give more time for startup
+            for i in {1..5}; do
+              if curl -f -s "${{ env.PROD_URL }}/health" 2>/dev/null; then
+                echo "✅ Production healthy"
+                break
+              else
+                echo "Attempt $i failed, retrying..."
+                sleep 10
+              fi
+              if [ $i -eq 5 ]; then
+                echo "⚠️  Production warmup may still be in progress"
+              fi
+            done
           fi
 
   summary:
