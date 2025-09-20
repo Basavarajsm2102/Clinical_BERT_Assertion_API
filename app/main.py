@@ -179,7 +179,7 @@ async def service_status() -> dict:
         "version": "1.0.0",
         "environment": os.getenv("ENVIRONMENT", "development"),
         "uptime_seconds": uptime_seconds,
-        "message": "Clinical BERT API is running"
+        "message": "Clinical BERT API is running",
     }
 
 
