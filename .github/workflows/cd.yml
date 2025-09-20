@@ -1,52 +1,52 @@
-# name: CD
+name: CD
 
-# on:
-#   push:
-#     branches: [main]
-#   workflow_dispatch:
-#     inputs:
-#       environment:
-#         description: 'Deployment environment'
-#         required: true
-#         default: 'staging'
-#         type: choice
-#         options:
-#         - staging
-#         - production
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-#     environment: ${{ github.event.inputs.environment || 'staging' }}
-#     permissions:
-#       contents: read
-#       id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
 
-#     steps:
-#     - uses: actions/checkout@v4
-#     - uses: google-github-actions/auth@v2
-#       with:
-#         credentials_json: ${{ secrets.GCP_SA_KEY }}
-#     - uses: google-github-actions/setup-gcloud@v2
-#     - run: |
-#         # Configure Docker for GCR
-#         gcloud auth configure-docker us-central1-docker.pkg.dev
+    steps:
+    - uses: actions/checkout@v4
+    - uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+    - uses: google-github-actions/setup-gcloud@v2
+    - run: |
+        # Configure Docker for GCR
+        gcloud auth configure-docker us-central1-docker.pkg.dev
 
-#         # Build optimized Docker image
-#         docker build -t clinical-bert-api .
+        # Build optimized Docker image
+        docker build -t clinical-bert-api .
 
-#         # Tag and push to GCR
-#         docker tag clinical-bert-api us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
-#         docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
+        # Tag and push to GCR
+        docker tag clinical-bert-api us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
+        docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
 
-#         # Deploy to Cloud Run with optimized settings
-#         gcloud run deploy clinical-bert-api \
-#           --image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest \
-#           --region=us-central1 \
-#           --allow-unauthenticated \
-#           --memory=2Gi \
-#           --cpu=1 \
-#           --max-instances=10 \
-#           --timeout=300 \
-#           --concurrency=80 \
-#           --port=8080
+        # Deploy to Cloud Run with optimized settings
+        gcloud run deploy clinical-bert-api \
+          --image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest \
+          --region=us-central1 \
+          --allow-unauthenticated \
+          --memory=2Gi \
+          --cpu=1 \
+          --max-instances=10 \
+          --timeout=300 \
+          --concurrency=80 \
+          --port=8080
