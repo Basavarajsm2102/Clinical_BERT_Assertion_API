@@ -14,8 +14,8 @@ on:
         default: 'staging'
         type: choice
         options:
-        - staging
-        - production
+          - staging
+          - production
 
 env:
   PYTHON_VERSION: '3.12'
@@ -25,9 +25,11 @@ jobs:
     name: Code Quality & Formatting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
@@ -58,10 +60,13 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.11', '3.12']
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -95,10 +100,9 @@ jobs:
               sys.exit(1)
           ")
 
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ github.run_id }}
+          name: coverage-report-${{ github.run_id }}-${{ github.job }}
           path: coverage.xml
 
   security:
@@ -107,7 +111,6 @@ jobs:
     needs: lint-and-format
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -120,16 +123,17 @@ jobs:
           pip install pbr bandit==1.7.5 safety==2.3.4
           pip install -r requirements.txt
 
-      - name: Run Bandit
-        run: bandit -r app/ -f json -o bandit-report.json || true
+      - name: Run Bandit security linter
+        run: |
+          bandit -r app/ -f json -o bandit-report.json || true
 
-      - name: Run Safety
-        run: safety check --json || true
+      - name: Run Safety security check
+        run: |
+          safety check --json || true
 
-      - name: Upload security artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: bandit-report-${{ github.run_id }}
+          name: bandit-report-${{ github.run_id }}-${{ github.job }}
           path: bandit-report.json
 
   docker-build:
@@ -138,15 +142,7 @@ jobs:
     needs: [test, security]
     steps:
       - uses: actions/checkout@v4
-
-      - uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+      - uses: docker/setup-buildx-action@v3
 
       - name: Build and tag Docker image
         run: |
@@ -155,9 +151,9 @@ jobs:
           docker tag clinical-bert-api us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG
           docker tag clinical-bert-api us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
 
-      - name: Push Docker image
+      - name: Push Docker image to GCP Artifact Registry
         run: |
-          IMAGE_TAG=${GITHUB_SHA::7}
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:$IMAGE_TAG
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/clinical-bert-repo/clinical-bert-api:latest
 
